@@ -1,0 +1,33 @@
+{
+  "name": "fullstack-portfolio",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently --names backend,frontend --kill-others-on-fail \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "launch": "npm run dev",
+    "backend:dev": "npm run dev --prefix backend",
+    "frontend:dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "prisma:generate": "npm run prisma:generate --prefix backend",
+    "prisma:migrate": "npm run prisma:migrate --prefix backend",
+    "db:migrate": "npm run prisma:migrate --prefix backend",
+    "db:seed": "npm run db:seed --prefix backend",
+    "db:reset": "npm run prisma:reset --prefix backend && npm run db:seed",
+    "reset": "npm run db:reset",
+    "reset:reboot": "npm run db:reset && npm run dev",
+    "clean:db": "powershell -NoProfile -Command \"if (Test-Path 'backend\\prisma\\dev.db') { Remove-Item -Force 'backend\\prisma\\dev.db' }; if (Test-Path 'backend\\prisma\\dev.db-journal') { Remove-Item -Force 'backend\\prisma\\dev.db-journal' }; exit 0\"",
+    "clean:dist": "powershell -NoProfile -Command \"if (Test-Path 'backend\\dist') { Remove-Item -Force -Recurse 'backend\\dist' }; if (Test-Path 'frontend\\dist') { Remove-Item -Force -Recurse 'frontend\\dist' }; exit 0\"",
+    "hard:reset": "npm run clean:db && npm run db:reset && npm run build",
+    "hard:reset:reboot": "npm run hard:reset && npm run launch"
+  },
+  "devDependencies": {
+    "fastify/jwt": "^10.0.0",
+    "bcryptjs": "^3.0.3",
+    "concurrently": "^9.1.2",
+    "prisma": "^5.0.0"
+  },
+  "dependencies": {
+    "@fastify/jwt": "^10.0.0"
+    
+  }
+}

@@ -1,0 +1,268 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "sqlite"
+    url      = env("DATABASE_URL")
+}
+
+enum WalletType {
+    currency
+    specialCurrency
+}
+
+model Project {
+    id           String        @id @default(cuid())
+    name         String
+    fullName     String
+    description  String?
+    language     String?
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+    technologies ProjectTech[]
+}
+
+model Technology {
+    id        String        @id @default(cuid())
+    name      String        @unique
+    createdAt DateTime      @default(now())
+    updatedAt DateTime      @updatedAt
+    projects  ProjectTech[]
+}
+
+model ProjectTech {
+    projectId    String
+    technologyId String
+    project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    technology   Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+    @@id([projectId, technologyId])
+}
+
+model User {
+    id           String  @id @default(cuid())
+    username     String  @unique
+    passwordHash String
+    email        String? @unique
+    role         String  @default("user") // "user" or "admin"
+    avatar       String? // URL to profile picture
+
+    // Currencies
+    currency        Int @default(0) // Gold/Gems/Tokens
+    specialCurrency Int @default(0) // Earned-only currency
+
+    // Relations
+    inventory      UserItem[]
+    trades         Trade[]
+    marketListings MarketListing[]
+    forumPosts     ForumPost[]
+
+    createdAt        DateTime          @default(now())
+    updatedAt        DateTime          @updatedAt
+    lootboxRolls     LootboxRoll[]
+    lootboxFavorites LootboxFavorite[]
+    economyLogs      EconomyLog[]
+}
+
+model Item {
+    id             String  @id @default(cuid())
+    name           String
+    image          String?
+    description    String?
+    rarity         String // "Common", "Rare", "Epic", "Legendary"
+    realWorldValue Decimal // USD or local currency for inventory estimate
+
+    // Weapon-specific (nullable for non-weapon items)
+    weaponType String?
+    wearMin    Float? // 0.0 - min condition
+    wearMax    Float? // 1.0 - max condition
+
+    userItems      UserItem[]
+    lootboxItems   LootboxItem[]
+    marketListings MarketListing[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model UserItem {
+    id                String @id @default(cuid())
+    userId            String
+    itemId            String
+    quantity          Int    @default(1)
+    reservedForTrade  Int    @default(0)
+    reservedForMarket Int    @default(0)
+
+    // Weapon-specific randomization
+    wearSeed    String? // Randomized condition float (0.0-1.0)
+    patternSeed String? // Paint pattern randomization
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    item Item @relation(fields: [itemId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([userId, itemId])
+}
+
+model Lootbox {
+    id            String     @id @default(cuid())
+    name          String
+    image         String?
+    description   String?
+    cost          Int // Cost in imaginary currency
+    spendCurrency WalletType @default(currency)
+
+    items     LootboxItem[]
+    rolls     LootboxRoll[]
+    favorites LootboxFavorite[]
+
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model LootboxFavorite {
+    userId    String
+    lootboxId String
+
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    lootbox Lootbox @relation(fields: [lootboxId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+
+    @@id([userId, lootboxId])
+}
+
+model LootboxItem {
+    id        String @id @default(cuid())
+    lootboxId String
+    itemId    String
+    rarity    String // "Common", "Rare", "Epic", "Legendary"
+    weight    Int    @default(1) // Higher = more likely to drop
+    quantity  Int    @default(1) // How many of this item
+
+    lootbox Lootbox @relation(fields: [lootboxId], references: [id], onDelete: Cascade)
+    item    Item    @relation(fields: [itemId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model LootboxRoll {
+    id           String  @id @default(cuid())
+    userId       String
+    lootboxId    String
+    resultItemId String // The item they got
+    costPaid     Int
+    requestId    String? @unique
+    serverSeed   String?
+    rollValue    Float?
+    totalWeight  Int?
+    dropTrace    String?
+
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    lootbox Lootbox @relation(fields: [lootboxId], references: [id])
+
+    createdAt DateTime @default(now())
+}
+
+model EconomyLog {
+    id            String     @id @default(cuid())
+    userId        String
+    eventType     String
+    currencyType  WalletType
+    amountDelta   Int
+    balanceBefore Int
+    balanceAfter  Int
+    reason        String
+    referenceId   String?
+    metadata      String?
+    createdAt     DateTime   @default(now())
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId, createdAt])
+}
+
+model MarketListing {
+    id           String @id @default(cuid())
+    userId       String
+    itemId       String
+    quantity     Int
+    pricePerUnit Int // In imaginary currency
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    item Item @relation(fields: [itemId], references: [id])
+
+    isActive  Boolean  @default(true)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Trade {
+    id             String @id @default(cuid())
+    fromUserId     String
+    toUserId       String
+    itemsOffered   String // JSON array of {itemId, quantity}
+    itemsRequested String // JSON array of {itemId, quantity}
+    status         String // "pending", "accepted", "rejected", "completed"
+
+    user User @relation(fields: [fromUserId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model ForumCategory {
+    id          String  @id @default(cuid())
+    name        String
+    description String?
+
+    posts ForumPost[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model ForumPost {
+    id         String @id @default(cuid())
+    userId     String
+    categoryId String
+    title      String
+    content    String
+
+    user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+    category ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+    replies  ForumReply[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model ForumReply {
+    id      String @id @default(cuid())
+    postId  String
+    userId  String
+    content String
+
+    post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Banner {
+    id           String   @id @default(cuid())
+    title        String
+    subtitle     String?
+    imageUrl     String
+    linkPath     String // e.g. "/lootbox" — must be a valid app route
+    linkLabel    String? // Optional CTA text shown on the banner
+    isActive     Boolean  @default(true)
+    displayOrder Int      @default(0)
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+}

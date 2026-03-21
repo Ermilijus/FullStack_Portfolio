@@ -1,0 +1,13 @@
+User fills login form (Frontend)
+    ↓
+POST /api/login with email + password (Frontend → Backend)
+    ↓
+Backend validates credentials against database
+    ↓
+Backend returns token (JWT) if valid (Backend → Frontend)
+    ↓
+Frontend stores token in memory/localStorage
+    ↓
+Frontend uses token in Authorization header for protected routes
+    ↓
+Home page loads with user data from /api/home endpoint

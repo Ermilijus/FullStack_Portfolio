@@ -1,0 +1,46 @@
+.login-container {
+  max-width: 420px;
+  margin: 4rem auto;
+  padding: 1.5rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-card-login);
+  background: var(--surface-login-card);
+}
+
+.login-container h1 {
+  margin: 0 0 1rem;
+}
+
+.login-container form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.login-container input {
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-input-login);
+  background: var(--surface-input-login);
+  color: var(--text-primary);
+}
+
+.login-container .error {
+  margin-top: 0.8rem;
+}
+
+.test-accounts {
+  margin-top: 1.2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-card-login);
+  color: var(--text-secondary);
+}
+
+.test-accounts h3 {
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.test-accounts p {
+  margin: 0.2rem 0;
+}

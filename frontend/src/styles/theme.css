@@ -1,0 +1,298 @@
+/*
+  Universal Theme Tokens
+  Edit values here to change global styling defaults across the frontend.
+  Most shared UI elements pull from these variables.
+
+  Theme presets:
+  - Dark (default): :root
+  - Light: :root[data-theme="light"]
+  - Neon: :root[data-theme="neon"]
+  - Custom: :root[data-theme="custom"] (starts as Dark clone)
+
+  How to switch themes at runtime:
+  document.documentElement.setAttribute("data-theme", "light");
+  document.documentElement.setAttribute("data-theme", "dark");
+  document.documentElement.setAttribute("data-theme", "neon");
+  document.documentElement.setAttribute("data-theme", "custom");
+*/
+
+/* ------------------------------ */
+/* Default Preset: Dark Theme     */
+/* ------------------------------ */
+:root,
+:root[data-theme="dark"] {
+  /* Typography */
+  --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* App background */
+  --app-bg-color: #100a14;
+  --app-bg-gradient: radial-gradient(circle at top, #2a1536 0%, #170f22 55%, #100a14 100%);
+
+  /* Text colors */
+  --text-primary: #f7edf9;
+  --text-secondary: #c7afd3;
+  --text-nav: #dfc1e6;
+  --text-user-chip: #e6caeb;
+  --text-error: #ff9ca5;
+  --text-on-button: #ffffff;
+
+  /* Surface colors */
+  --surface-card: #1e1327;
+  --surface-login-card: #1b1224;
+  --surface-input: #170f20;
+  --surface-input-login: #150d1d;
+  --surface-nav-active: #29183a;
+  --surface-header: rgba(18, 11, 27, 0.9);
+
+  /* Borders */
+  --border-card: #4d2f61;
+  --border-card-login: #492d5c;
+  --border-input: #5c3a73;
+  --border-input-login: #5a3a6f;
+  --border-header: #503367;
+  --border-nav-hover: #8a4ca8;
+  --border-nav-active: #b85ac7;
+  --border-card-hover: #9a55bf;
+
+  /* Buttons */
+  --button-radius: 10px;
+  --button-padding: 0.6rem 1rem;
+  --button-bg: #b44ad2;
+  --button-bg-hover: #9f3fc2;
+  --button-bg-active: #8d34b0;
+
+  /*
+    Optional gradient button theme:
+    1) Uncomment line below
+    2) Optionally adjust --button-bg-hover and --button-bg-active
+  */
+  /* --button-bg: linear-gradient(135deg, #1f8fff 0%, #2dc8ff 100%); */
+
+  /* Special buttons */
+  --button-logout-bg: #d14e4e;
+
+  /* Lootbox accents */
+  --price-chip-text: #fef3c7;
+  --price-chip-border: rgba(250, 204, 21, 0.5);
+  --price-chip-bg: linear-gradient(135deg, rgba(251, 191, 36, 0.34), rgba(180, 83, 9, 0.34));
+  --favorite-accent: #facc15;
+  --favorite-accent-bg: rgba(250, 204, 21, 0.12);
+
+  --rarity-legendary-text: #fbbf24;
+  --rarity-legendary-bg: rgba(245, 158, 11, 0.28);
+  --rarity-legendary-border: rgba(245, 158, 11, 0.45);
+  --rarity-epic-text: #d8b4fe;
+  --rarity-epic-bg: rgba(192, 132, 252, 0.28);
+  --rarity-epic-border: rgba(192, 132, 252, 0.45);
+  --rarity-rare-text: #93c5fd;
+  --rarity-rare-bg: rgba(96, 165, 250, 0.28);
+  --rarity-rare-border: rgba(96, 165, 250, 0.45);
+  --rarity-common-text: #bbf7d0;
+  --rarity-common-bg: rgba(134, 239, 172, 0.24);
+  --rarity-common-border: rgba(134, 239, 172, 0.4);
+}
+
+/* ------------------------------ */
+/* Preset: Light Theme            */
+/* ------------------------------ */
+:root[data-theme="light"] {
+  /* Typography */
+  --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* App background */
+  --app-bg-color: #f2f6ff;
+  --app-bg-gradient: radial-gradient(circle at top, #ffffff 0%, #f1f6ff 50%, #e8eefb 100%);
+
+  /* Text colors */
+  --text-primary: #13233a;
+  --text-secondary: #4a6182;
+  --text-nav: #324a6b;
+  --text-user-chip: #2a4365;
+  --text-error: #b3261e;
+  --text-on-button: #ffffff;
+
+  /* Surface colors */
+  --surface-card: #ffffff;
+  --surface-login-card: #ffffff;
+  --surface-input: #f6f9ff;
+  --surface-input-login: #f6f9ff;
+  --surface-nav-active: #dce9ff;
+  --surface-header: rgba(243, 247, 255, 0.92);
+
+  /* Borders */
+  --border-card: #d6e1f3;
+  --border-card-login: #d6e1f3;
+  --border-input: #c9d8ee;
+  --border-input-login: #c9d8ee;
+  --border-header: #cfddf3;
+  --border-nav-hover: #95b4dd;
+  --border-nav-active: #6f97cf;
+  --border-card-hover: #87abd9;
+
+  /* Buttons */
+  --button-radius: 10px;
+  --button-padding: 0.6rem 1rem;
+  --button-bg: #2c6ad4;
+  --button-bg-hover: #245fc6;
+  --button-bg-active: #1e55b8;
+
+  /* Special buttons */
+  --button-logout-bg: #c84545;
+
+  /* Lootbox accents */
+  --price-chip-text: #7c2d12;
+  --price-chip-border: rgba(217, 119, 6, 0.5);
+  --price-chip-bg: linear-gradient(135deg, rgba(253, 230, 138, 0.95), rgba(251, 191, 36, 0.72));
+  --favorite-accent: #b45309;
+  --favorite-accent-bg: rgba(245, 158, 11, 0.18);
+
+  --rarity-legendary-text: #a16207;
+  --rarity-legendary-bg: rgba(245, 158, 11, 0.24);
+  --rarity-legendary-border: rgba(180, 83, 9, 0.42);
+  --rarity-epic-text: #7e22ce;
+  --rarity-epic-bg: rgba(192, 132, 252, 0.24);
+  --rarity-epic-border: rgba(126, 34, 206, 0.36);
+  --rarity-rare-text: #1d4ed8;
+  --rarity-rare-bg: rgba(96, 165, 250, 0.24);
+  --rarity-rare-border: rgba(29, 78, 216, 0.34);
+  --rarity-common-text: #15803d;
+  --rarity-common-bg: rgba(134, 239, 172, 0.24);
+  --rarity-common-border: rgba(21, 128, 61, 0.3);
+}
+
+/* ------------------------------ */
+/* Preset: Neon Cyberpunk         */
+/* ------------------------------ */
+:root[data-theme="neon"] {
+  /* Typography */
+  --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* App background */
+  --app-bg-color: #090411;
+  --app-bg-gradient: radial-gradient(circle at top, #1a0f2b 0%, #0c0818 45%, #06030e 100%);
+
+  /* Text colors */
+  --text-primary: #ffe7fa;
+  --text-secondary: #ff6edb;
+  --text-nav: #ff40d6;
+  --text-user-chip: #ffb5f9;
+  --text-error: #ff6b95;
+  --text-on-button: #ff009d;
+
+  /* Surface colors */
+  --surface-card: #120d23;
+  --surface-login-card: #100b20;
+  --surface-input: #0f0c1b;
+  --surface-input-login: #0d0a18;
+  --surface-nav-active: #1d1333;
+  --surface-header: rgba(8, 5, 17, 0.88);
+
+  /* Borders */
+  --border-card: #3d2c6a;
+  --border-card-login: #3a2a65;
+  --border-input: #4f3f7f;
+  --border-input-login: #4d3c7a;
+  --border-header: #39285f;
+  --border-nav-hover: #ff00aa;
+  --border-nav-active: #ff2eb9;
+  --border-card-hover: #ff009d;
+
+  /* Buttons */
+  --button-radius: 10px;
+  --button-padding: 0.6rem 1rem;
+  --button-bg: linear-gradient(135deg, #ff00d4 0%, #ffaff2 100%);
+  --button-bg-hover: linear-gradient(135deg, #ff00d4 0%, #f057ca 100%);
+  --button-bg-active: linear-gradient(135deg, #ff00d4 0%, #d746c4 100%);
+
+  /* Special buttons */
+  --button-logout-bg: #ff4d7a;
+
+  /* Lootbox accents */
+  --price-chip-text: #fff0fb;
+  --price-chip-border: rgba(255, 64, 214, 0.45);
+  --price-chip-bg: linear-gradient(135deg, rgba(255, 0, 212, 0.4), rgba(255, 175, 242, 0.28));
+  --favorite-accent: #ff7ae8;
+  --favorite-accent-bg: rgba(255, 0, 212, 0.16);
+
+  --rarity-legendary-text: #ffd166;
+  --rarity-legendary-bg: rgba(255, 209, 102, 0.24);
+  --rarity-legendary-border: rgba(255, 209, 102, 0.42);
+  --rarity-epic-text: #ff9df3;
+  --rarity-epic-bg: rgba(255, 64, 214, 0.24);
+  --rarity-epic-border: rgba(255, 64, 214, 0.42);
+  --rarity-rare-text: #72ddff;
+  --rarity-rare-bg: rgba(45, 200, 255, 0.24);
+  --rarity-rare-border: rgba(45, 200, 255, 0.42);
+  --rarity-common-text: #7dffb3;
+  --rarity-common-bg: rgba(125, 255, 179, 0.22);
+  --rarity-common-border: rgba(125, 255, 179, 0.38);
+}
+
+/* ------------------------------ */
+/* Preset: Custom (Dark Clone)    */
+/* You can edit this freely        */
+/* ------------------------------ */
+:root[data-theme="custom"] {
+  /* Typography */
+  --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* App background */
+  --app-bg-color: #100a14;
+  --app-bg-gradient: radial-gradient(circle at top, #2a1536 0%, #170f22 55%, #100a14 100%);
+
+  /* Text colors */
+  --text-primary: #f7edf9;
+  --text-secondary: #c7afd3;
+  --text-nav: #dfc1e6;
+  --text-user-chip: #e6caeb;
+  --text-error: #ff9ca5;
+  --text-on-button: #ffffff;
+
+  /* Surface colors */
+  --surface-card: #1e1327;
+  --surface-login-card: #1b1224;
+  --surface-input: #170f20;
+  --surface-input-login: #150d1d;
+  --surface-nav-active: #29183a;
+  --surface-header: rgba(18, 11, 27, 0.9);
+
+  /* Borders */
+  --border-card: #4d2f61;
+  --border-card-login: #492d5c;
+  --border-input: #5c3a73;
+  --border-input-login: #5a3a6f;
+  --border-header: #503367;
+  --border-nav-hover: #8a4ca8;
+  --border-nav-active: #b85ac7;
+  --border-card-hover: #9a55bf;
+
+  /* Buttons */
+  --button-radius: 10px;
+  --button-padding: 0.6rem 1rem;
+  --button-bg: #b44ad2;
+  --button-bg-hover: #9f3fc2;
+  --button-bg-active: #8d34b0;
+
+  /* Special buttons */
+  --button-logout-bg: #d14e4e;
+
+  /* Lootbox accents */
+  --price-chip-text: #fef3c7;
+  --price-chip-border: rgba(250, 204, 21, 0.5);
+  --price-chip-bg: linear-gradient(135deg, rgba(251, 191, 36, 0.34), rgba(180, 83, 9, 0.34));
+  --favorite-accent: #facc15;
+  --favorite-accent-bg: rgba(250, 204, 21, 0.12);
+
+  --rarity-legendary-text: #fbbf24;
+  --rarity-legendary-bg: rgba(245, 158, 11, 0.28);
+  --rarity-legendary-border: rgba(245, 158, 11, 0.45);
+  --rarity-epic-text: #d8b4fe;
+  --rarity-epic-bg: rgba(192, 132, 252, 0.28);
+  --rarity-epic-border: rgba(192, 132, 252, 0.45);
+  --rarity-rare-text: #93c5fd;
+  --rarity-rare-bg: rgba(96, 165, 250, 0.28);
+  --rarity-rare-border: rgba(96, 165, 250, 0.45);
+  --rarity-common-text: #bbf7d0;
+  --rarity-common-bg: rgba(134, 239, 172, 0.24);
+  --rarity-common-border: rgba(134, 239, 172, 0.4);
+}
