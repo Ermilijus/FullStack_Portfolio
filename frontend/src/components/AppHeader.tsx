@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { resolveAvatarUrl } from "../avatar";
 import { useAppContext } from "../context/AppContext";
 
 const BASE_NAV_ITEMS = [
@@ -82,6 +83,7 @@ const AppHeader = () => {
             <option value="custom">Custom</option>
           </select>
         </label>
+        <img src={resolveAvatarUrl(user?.avatar)} alt="User avatar" className="user-chip-avatar" />
         <span>{user?.username ?? user?.email ?? "User"}</span>
         <button type="button" className="logout-btn" onClick={handleLogout}>
           Logout

@@ -39,7 +39,12 @@ const Login = () => {
         ?.pathname;
       navigate(nextPath ?? "/home", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const message = err instanceof Error ? err.message : "Login failed";
+      if (message.toLowerCase().includes("failed to fetch")) {
+        setError(`Cannot reach API at ${API_BASE_URL}. Check backend runtime and CORS origin settings.`);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,10 @@ import { config as loadDotEnv } from "dotenv";
 
 loadDotEnv();
 
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = "file:./dev.db";
+}
+
 export type AppConfig = {
   PORT: number;
   HOST: string;

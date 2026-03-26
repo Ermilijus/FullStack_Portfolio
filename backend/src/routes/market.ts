@@ -175,6 +175,7 @@ const fetchListingsPayload = async (
         select: {
           id: true,
           username: true,
+          avatar: true,
         },
       },
       item: {
@@ -248,6 +249,7 @@ const fetchListingsPayload = async (
       seller: {
         id: listing.user.id,
         username: listing.user.username,
+        avatar: listing.user.avatar,
       },
       item: {
         id: listing.item.id,
@@ -526,6 +528,7 @@ export const marketRoutes: FastifyPluginAsync = async (app) => {
             select: {
               id: true,
               username: true,
+              avatar: true,
             },
           },
           item: {
@@ -574,6 +577,7 @@ export const marketRoutes: FastifyPluginAsync = async (app) => {
           seller: {
             id: listing.user.id,
             username: listing.user.username,
+            avatar: listing.user.avatar,
           },
           item: {
             id: listing.item.id,

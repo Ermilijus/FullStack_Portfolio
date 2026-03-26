@@ -13,11 +13,20 @@ export const buildApp = async () => {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  const isLocalDevOrigin = (origin: string) => {
+    try {
+      const parsed = new URL(origin);
+      return parsed.protocol === "http:" && (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1");
+    } catch {
+      return false;
+    }
+  };
+
   app.decorate("config", config);
 
   await app.register(cors, {
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin) || isLocalDevOrigin(origin)) {
         callback(null, true);
         return;
       }

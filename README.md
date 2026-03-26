@@ -39,8 +39,33 @@ or:
 npm run launch
 ```
 
+`npm run launch` is now a guarded startup pipeline with explicit failure telemetry.
+It classifies and prints hard failure labels before stopping startup, for example:
+- `MIGRATION_ERROR` (database migration step failed)
+- `BE_FAILED_TO_LAUNCH` (backend did not pass `/health`)
+- `DB_POPULATION_FAILED` (login probe failed, seeded auth data missing/broken)
+- `FRONTEND_RUNTIME_EXIT` (frontend process exited unexpectedly)
+- `BACKEND_RUNTIME_EXIT` (backend process exited unexpectedly)
+
+If guarded launch fails on DB population check, run:
+
+```bash
+npm run db:seed
+```
+
+If you need to bypass the login probe for a custom local dataset:
+
+```bash
+set SKIP_LOGIN_PROBE=1
+npm run launch
+```
+
 - Backend: http://127.0.0.1:4000
 - Frontend: http://localhost:5173
+
+Notes:
+- Frontend dev server is pinned to `127.0.0.1:5173` with strict port mode, so port conflicts fail fast instead of silently moving to another port.
+- `npm run launch:fast` is available as a shortcut for direct dev startup.
 
 ## 4) Test API quickly
 

@@ -1,16 +1,16 @@
-const getApiBaseUrl = () => {
+﻿const getApiBaseUrl = () => {
   const configuredUrl = import.meta.env.VITE_API_URL?.trim();
   if (configuredUrl) {
     return configuredUrl;
   }
 
   if (typeof window !== "undefined") {
-    const { hostname, origin } = window.location;
+    const { hostname } = window.location;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "http://127.0.0.1:4000";
+      return `http://${hostname}:4000`;
     }
 
-    return origin;
+    return window.location.origin;
   }
 
   return "http://127.0.0.1:4000";
@@ -298,6 +298,7 @@ export type MarketListing = {
   seller: {
     id: string;
     username: string;
+    avatar: string | null;
   };
   item: {
     id: string;
@@ -381,6 +382,17 @@ type PurchaseMarketListingResponse = {
       reservedForTrade: number;
       reservedForMarket: number;
     };
+  };
+};
+
+type CreateMarketListingResponse = {
+  success: boolean;
+  listing: {
+    id: string;
+    itemId: string;
+    quantity: number;
+    listedPriceUsd: number;
+    createdAt: string;
   };
 };
 
@@ -505,6 +517,28 @@ export const fetchMarketListingDetail = async (token: string, listingId: string)
   return data.listing;
 };
 
+export const createMarketListing = async (
+  token: string,
+  payload: { itemId: string; quantity: number; listedPriceUsd: number },
+): Promise<CreateMarketListingResponse["listing"]> => {
+  const response = await fetch(`${API_BASE_URL}/api/market/listings`, {
+    method: "POST",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: "Failed to create market listing" }));
+    throw new Error(typeof body.error === "string" ? body.error : "Failed to create market listing");
+  }
+
+  const data = (await response.json()) as CreateMarketListingResponse;
+  return data.listing;
+};
+
 export const purchaseMarketListing = async (
   token: string,
   listingId: string,
@@ -533,4 +567,192 @@ export const removeMarketListing = async (token: string, listingId: string): Pro
     const payload = await response.json().catch(() => ({ error: "Failed to remove listing" }));
     throw new Error(typeof payload.error === "string" ? payload.error : "Failed to remove listing");
   }
+};
+export type ProfileStats = {
+  inventoryItems: number;
+  favoriteLootboxes: number;
+  posts: number;
+  replies: number;
+  reputation: number;
+};
+
+export type ProfileSummary = {
+  id: string;
+  username: string;
+  email?: string | null;
+  role?: string;
+  avatar?: string | null;
+  createdAt: string;
+  stats: ProfileStats;
+};
+
+type ProfileSummaryResponse = {
+  user: ProfileSummary;
+};
+
+export type UserForumPost = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  replyCount: number;
+  category: {
+    id: string;
+    name: string;
+  };
+};
+
+type UserForumPostsResponse = {
+  posts: UserForumPost[];
+};
+
+export type UserForumReply = {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  post: {
+    id: string;
+    title: string;
+  };
+};
+
+type UserForumRepliesResponse = {
+  replies: UserForumReply[];
+};
+
+export const fetchMyProfileSummary = async (token: string): Promise<ProfileSummary> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/me`, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load profile");
+  }
+
+  const data = (await response.json()) as ProfileSummaryResponse;
+  return data.user;
+};
+
+export const fetchPublicProfileSummary = async (userId: string): Promise<ProfileSummary> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/${encodeURIComponent(userId)}`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load public profile");
+  }
+
+  const data = (await response.json()) as ProfileSummaryResponse;
+  return data.user;
+};
+
+export type ProfileUserUpdate = {
+  id: string;
+  username: string;
+  email?: string | null;
+  role?: string;
+  avatar?: string | null;
+};
+
+export const updateProfileAvatar = async (token: string, avatarUrl: string): Promise<ProfileUserUpdate> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/avatar`, {
+    method: "PUT",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ avatarUrl }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ error: "Failed to save avatar" }));
+    throw new Error(typeof payload.error === "string" ? payload.error : "Failed to save avatar");
+  }
+
+  const data = (await response.json()) as { user: ProfileUserUpdate };
+  return data.user;
+};
+
+export const updateProfileEmail = async (
+  token: string,
+  email: string,
+  currentPassword: string,
+): Promise<ProfileUserUpdate> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/email`, {
+    method: "PUT",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, currentPassword }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ error: "Failed to update email" }));
+    throw new Error(typeof payload.error === "string" ? payload.error : "Failed to update email");
+  }
+
+  const data = (await response.json()) as { user: ProfileUserUpdate };
+  return data.user;
+};
+
+
+export const updateProfileUsername = async (token: string, username: string): Promise<ProfileUserUpdate> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/username`, {
+    method: "PUT",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ error: "Failed to update username" }));
+    throw new Error(typeof payload.error === "string" ? payload.error : "Failed to update username");
+  }
+
+  const data = (await response.json()) as { user: ProfileUserUpdate };
+  return data.user;
+};
+export const updateProfilePassword = async (
+  token: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/password`, {
+    method: "PUT",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ error: "Failed to update password" }));
+    throw new Error(typeof payload.error === "string" ? payload.error : "Failed to update password");
+  }
+};
+
+export const fetchUserForumPosts = async (userId: string): Promise<UserForumPost[]> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/${encodeURIComponent(userId)}/posts`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load user posts");
+  }
+
+  const data = (await response.json()) as UserForumPostsResponse;
+  return data.posts;
+};
+
+export const fetchUserForumReplies = async (userId: string): Promise<UserForumReply[]> => {
+  const response = await fetch(`${API_BASE_URL}/api/profile/${encodeURIComponent(userId)}/replies`);
+
+  if (!response.ok) {
+    throw new Error("Failed to load user replies");
+  }
+
+  const data = (await response.json()) as UserForumRepliesResponse;
+  return data.replies;
 };

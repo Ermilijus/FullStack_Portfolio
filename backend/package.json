@@ -8,7 +8,8 @@
 		"build": "tsc -p tsconfig.json",
 		"start": "node dist/server.js",
 		"prisma:generate": "prisma generate",
-		"prisma:migrate": "prisma migrate dev",
+		"prisma:migrate": "prisma db push --accept-data-loss",
+		"prisma:migrate:dev": "prisma migrate dev",
 		"prisma:reset": "node ./node_modules/prisma/build/index.js db push --force-reset && node ./node_modules/prisma/build/index.js generate",
 		"db:seed": "tsx src/scripts/seed.ts",
 		"clean": "powershell -NoProfile -Command \"if (Test-Path 'prisma\\dev.db') { Remove-Item -Force 'prisma\\dev.db' }; if (Test-Path 'prisma\\dev.db-journal') { Remove-Item -Force 'prisma\\dev.db-journal' }; if (Test-Path 'node_modules') { Remove-Item -Force -Recurse 'node_modules' }; if (Test-Path 'dist') { Remove-Item -Force -Recurse 'dist' }; if (Test-Path 'prisma\\migrations') { Remove-Item -Force -Recurse 'prisma\\migrations' }; exit 0\""
@@ -22,7 +23,8 @@
 		"bcryptjs": "^2.4.3",
 		"dotenv": "^16.4.7",
 		"fastify": "^5.2.2",
-		"fastify-plugin": "^5.0.1"
+		"fastify-plugin": "^5.0.1",
+		"fullstack-portfolio": "file:.."
 	},
 	"devDependencies": {
 		"@types/bcryptjs": "^2.4.6",

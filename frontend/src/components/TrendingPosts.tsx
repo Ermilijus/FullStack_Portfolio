@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../api";
+import { resolveAvatarUrl } from "../avatar";
 import { useAppContext } from "../context/AppContext";
 
 type TrendingPost = {
@@ -26,29 +27,15 @@ const formatRelativeTime = (iso: string): string => {
 
 const AvatarCircle = ({ username, avatar }: { username: string; avatar: string | null }) => {
   const [imgFailed, setImgFailed] = useState(false);
+  const src = imgFailed ? resolveAvatarUrl(null) : resolveAvatarUrl(avatar);
 
-  if (avatar && !imgFailed) {
-    return (
-      <img
-        className="trending-avatar"
-        src={avatar}
-        alt={username}
-        onError={() => setImgFailed(true)}
-      />
-    );
-  }
-
-  // Fallback: coloured circle with first letter
-  const initial = username.charAt(0).toUpperCase();
-  const hue = [...username].reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
   return (
-    <div
-      className="trending-avatar trending-avatar-fallback"
-      style={{ backgroundColor: `hsl(${hue}, 55%, 35%)` }}
-      aria-label={username}
-    >
-      {initial}
-    </div>
+    <img
+      className="trending-avatar"
+      src={src}
+      alt={username}
+      onError={() => setImgFailed(true)}
+    />
   );
 };
 

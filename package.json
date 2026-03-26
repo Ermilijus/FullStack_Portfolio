@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "concurrently --names backend,frontend --kill-others-on-fail \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "launch": "npm run dev",
+    "launch": "node scripts/launch-guarded.mjs",
+    "launch:fast": "npm run dev",
     "backend:dev": "npm run dev --prefix backend",
     "frontend:dev": "npm run dev --prefix frontend",
     "build": "npm run build --prefix backend && npm run build --prefix frontend",
@@ -21,7 +22,6 @@
     "hard:reset:reboot": "npm run hard:reset && npm run launch"
   },
   "devDependencies": {
-    "fastify/jwt": "^10.0.0",
     "bcryptjs": "^3.0.3",
     "concurrently": "^9.1.2",
     "prisma": "^5.0.0"

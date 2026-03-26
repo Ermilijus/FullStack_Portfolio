@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  createMarketListing,
   fetchMarketListingDetail,
   fetchMarketListings,
   fetchMyMarketListings,
@@ -11,10 +12,22 @@ import {
   purchaseMarketListing,
   type ProfileInventoryItem,
 } from "../api";
+import { resolveAvatarUrl } from "../avatar";
 import { useAppContext } from "../context/AppContext";
 
 const PAGE_SIZE_OPTIONS: Array<10 | 15 | 30 | 50> = [10, 15, 30, 50];
 const WEAR_OPTIONS = ["Factory New", "Minimal Wear", "Field Tested", "Worn"];
+
+type UnitWear = "Factory New" | "Minimal Wear" | "Field Tested" | "Worn";
+
+type InventoryUnit = {
+  unitId: string;
+  index: number;
+  source: ProfileInventoryItem;
+  floatValue: number;
+  wear: UnitWear;
+  holdType: "available" | "trade" | "market";
+};
 
 const rarityClass = (rarity: string) => rarity.trim().toLowerCase();
 
@@ -32,6 +45,47 @@ const formatUsd = (value: number) => {
 };
 
 const clampFloatDisplay = (value: number) => value.toFixed(6);
+
+const seededUnitValue = (seed: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0) / 4294967295;
+};
+
+const deriveUnitWear = (floatValue: number): UnitWear => {
+  if (floatValue <= 0.07) {
+    return "Factory New";
+  }
+  if (floatValue <= 0.15) {
+    return "Minimal Wear";
+  }
+  if (floatValue <= 0.38) {
+    return "Field Tested";
+  }
+
+  return "Worn";
+};
+
+const deriveInventoryUnit = (entry: ProfileInventoryItem, index: number): InventoryUnit => {
+  const seed = `${entry.id}:${entry.item.id}:${index}`;
+  const floatValue = Number(seededUnitValue(seed).toFixed(6));
+  const tradeBoundary = entry.reservedForTrade;
+  const marketBoundary = entry.reservedForTrade + entry.reservedForMarket;
+  const holdType = index < tradeBoundary ? "trade" : index < marketBoundary ? "market" : "available";
+
+  return {
+    unitId: `${entry.id}:${index}`,
+    index,
+    source: entry,
+    floatValue,
+    wear: deriveUnitWear(floatValue),
+    holdType,
+  };
+};
 
 const toggleArrayValue = (values: string[], value: string) => {
   if (values.includes(value)) {
@@ -117,6 +171,20 @@ const Market = () => {
   const [inventoryItems, setInventoryItems] = useState<ProfileInventoryItem[]>([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [showSellModal, setShowSellModal] = useState(false);
+  const [sellTargetItem, setSellTargetItem] = useState<InventoryUnit | null>(null);
+  const [sellPriceInput, setSellPriceInput] = useState("");
+  const [sellSubmitting, setSellSubmitting] = useState(false);
+  const [sellFeedback, setSellFeedback] = useState<string | null>(null);
+
+  const inventoryUnits = useMemo(
+    () => inventoryItems.flatMap((entry) => Array.from({ length: Math.max(0, entry.availableQuantity) }, (_, index) => deriveInventoryUnit(entry, index))),
+    [inventoryItems],
+  );
+  const hiddenEscrowCount = useMemo(
+    () => inventoryItems.reduce((sum, entry) => sum + Math.max(0, entry.quantity - entry.availableQuantity), 0),
+    [inventoryItems],
+  );
 
   const toolbarRef = useRef<HTMLElement | null>(null);
   const [toolbarFloating, setToolbarFloating] = useState(false);
@@ -315,13 +383,18 @@ const Market = () => {
 
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (showSellModal) {
+          setShowSellModal(false);
+          return;
+        }
+
         setShowInventoryModal(false);
       }
     };
 
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
-  }, [showInventoryModal]);
+  }, [showInventoryModal, showSellModal]);
 
   const clearAdvancedFilters = () => {
     setLootboxFilter("");
@@ -356,6 +429,56 @@ const Market = () => {
     setSelectedListing(null);
     setIsFindMenuOpen(false);
     setDetailsActionMode("buy");
+  };
+
+  const handleSellModalOpen = (unit: InventoryUnit) => {
+    setSellTargetItem(unit);
+    setSellPriceInput(unit.source.item.marketPrice.toFixed(2));
+    setSellFeedback(null);
+    setShowSellModal(true);
+  };
+
+  const handleCreateListing = async () => {
+    if (!token || !sellTargetItem) {
+      return;
+    }
+
+    const price = Number.parseFloat(sellPriceInput);
+
+    if (sellTargetItem.holdType !== "available") {
+      setSellFeedback("This unit is currently on hold and cannot be listed.");
+      return;
+    }
+
+    if (!Number.isFinite(price) || price <= 0) {
+      setSellFeedback("Price must be greater than 0.");
+      return;
+    }
+
+    setSellSubmitting(true);
+    setSellFeedback(null);
+
+    try {
+      await createMarketListing(token, {
+        itemId: sellTargetItem.source.item.id,
+        quantity: 1,
+        listedPriceUsd: Number(price.toFixed(2)),
+      });
+
+      const refreshedInventory = await fetchProfileInventory(token);
+      setInventoryItems(refreshedInventory);
+      setShowSellModal(false);
+      setSellTargetItem(null);
+      setSellFeedback(null);
+      setInventoryError(null);
+      setActionMessage("Listing created from inventory.");
+      setRefreshKey((current) => current + 1);
+      setMyRefreshKey((current) => current + 1);
+    } catch (createError) {
+      setSellFeedback(createError instanceof Error ? createError.message : "Failed to create market listing.");
+    } finally {
+      setSellSubmitting(false);
+    }
   };
 
   const handleOpenLootboxFromDetail = (lootboxId: string) => {
@@ -420,6 +543,9 @@ const Market = () => {
             }}
           >
             Listings
+          </button>
+          <button type="button" className="market-listings-button" onClick={openInventoryModal}>
+            Inventory
           </button>
 
           <div className="market-search-wrap">
@@ -526,9 +652,11 @@ const Market = () => {
                 <div className="market-listing-bottom-row market-info-line market-info-line-alt">
                   <p className="market-item-price">{formatUsd(listing.listedPriceUsd)}</p>
                   <div className="market-seller-chip" title={`Seller: ${listing.seller.username}`}>
-                    <span className="market-seller-icon" aria-hidden="true">
-                      👤
-                    </span>
+                    <img
+                      src={resolveAvatarUrl(listing.seller.avatar)}
+                      alt={listing.seller.username}
+                      className="market-seller-avatar"
+                    />
                     <span className="market-seller-name">Seller: {listing.seller.username}</span>
                   </div>
                 </div>
@@ -787,9 +915,11 @@ const Market = () => {
                         <div className="market-listing-bottom-row market-info-line market-info-line-alt">
                           <p className="market-item-price">{formatUsd(listing.listedPriceUsd)}</p>
                           <div className="market-seller-chip" title={`Seller: ${listing.seller.username}`}>
-                            <span className="market-seller-icon" aria-hidden="true">
-                              👤
-                            </span>
+                            <img
+                              src={resolveAvatarUrl(listing.seller.avatar)}
+                              alt={listing.seller.username}
+                              className="market-seller-avatar"
+                            />
                             <span className="market-seller-name">Seller: {listing.seller.username}</span>
                           </div>
                         </div>
@@ -862,7 +992,14 @@ const Market = () => {
                     </p>
                     <p className="market-item-meta muted market-info-line market-info-line-alt">
                       <span className="market-meta-label">Seller</span>
-                      <span>{selectedListing.seller.username}</span>
+                      <span className="market-seller-inline">
+                        <img
+                          src={resolveAvatarUrl(selectedListing.seller.avatar)}
+                          alt={selectedListing.seller.username}
+                          className="market-seller-avatar"
+                        />
+                        {selectedListing.seller.username}
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -927,32 +1064,71 @@ const Market = () => {
             {inventoryError && <p className="error-text">{inventoryError}</p>}
             {inventoryLoading ? (
               <p className="muted">Loading inventory...</p>
-            ) : inventoryItems.length === 0 ? (
-              <p className="muted">No items in your inventory yet.</p>
+            ) : inventoryUnits.length === 0 ? (
+              <p className="muted">No available items in your inventory right now.</p>
             ) : (
-              <div className="profile-inventory-grid">
-                {inventoryItems.map((entry) => (
-                  <article key={entry.id} className="profile-inventory-card">
-                    <div className="profile-inventory-image-wrap">
-                      {entry.item.image ? (
-                        <img src={entry.item.image} alt={entry.item.name} className="profile-inventory-image" />
-                      ) : (
-                        <div className="lootbox-card-image-fallback">?</div>
-                      )}
-                    </div>
-                    <strong title={entry.item.name}>{entry.item.name}</strong>
-                    <div className="profile-inventory-meta muted">
-                      <span>{entry.item.rarity}</span>
-                      <span>${entry.item.marketPrice.toFixed(2)}</span>
-                    </div>
-                    <div className="profile-inventory-meta muted">
-                      <span>Qty {entry.quantity}</span>
-                      <span>Avail {entry.availableQuantity}</span>
-                    </div>
-                  </article>
-                ))}
-              </div>
+              <>
+                {hiddenEscrowCount > 0 && (
+                  <p className="muted">{hiddenEscrowCount} item(s) currently in escrow/hold are hidden from inventory display.</p>
+                )}
+                <div className="profile-inventory-slot-grid">
+                  {inventoryUnits.map((unit) => (
+                    <button
+                      type="button"
+                      key={unit.unitId}
+                      className={`profile-inventory-slot ${unit.source.item.rarity.trim().toLowerCase()}`}
+                      onClick={() => handleSellModalOpen(unit)}
+                    >
+                      <span className="profile-slot-wear">{unit.wear}</span>
+                      <span className="profile-slot-name" title={unit.source.item.name}>{unit.source.item.name}</span>
+                      <div className="profile-slot-image-wrap">
+                        {unit.source.item.image ? (
+                          <img src={unit.source.item.image} alt={unit.source.item.name} className="profile-slot-image" />
+                        ) : (
+                          <div className="profile-slot-image profile-slot-image-fallback">?</div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
+          </article>
+        </div>
+      )}
+
+      {showSellModal && sellTargetItem && (
+        <div className="profile-inventory-backdrop" onClick={() => setShowSellModal(false)}>
+          <article className="profile-inventory-modal profile-account-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="compact-row">
+              <h3>List Item on Market</h3>
+              <button type="button" className="button-secondary" onClick={() => setShowSellModal(false)}>
+                Close
+              </button>
+            </div>
+
+            <article className="profile-account-block">
+              <h4>{sellTargetItem.source.item.name}</h4>
+              <p className="muted">Wear {sellTargetItem.wear} · Float {sellTargetItem.floatValue.toFixed(6)}</p>
+              <p className="muted">This lists one unit and hands it to market escrow handling while active.</p>
+              <div className="profile-inline-form profile-inline-form-stack">
+                <label>
+                  Price (USD)
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    value={sellPriceInput}
+                    onChange={(event) => setSellPriceInput(event.target.value)}
+                    placeholder="0.00"
+                  />
+                </label>
+                <button type="button" onClick={handleCreateListing} disabled={sellSubmitting}>
+                  {sellSubmitting ? "Creating..." : "Create Listing"}
+                </button>
+              </div>
+              {sellFeedback && <p className="error-text">{sellFeedback}</p>}
+            </article>
           </article>
         </div>
       )}
