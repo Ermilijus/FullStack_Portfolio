@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useCallback, useContext, useState, ReactNode, useEffect } from "react";
 import { API_BASE_URL } from "../api";
 
 interface User {
@@ -7,6 +7,8 @@ interface User {
   username: string;
   role?: string;
   avatar?: string;
+  currency?: number;
+  specialCurrency?: number;
 }
 
 interface AppContextType {
@@ -17,6 +19,7 @@ interface AppContextType {
   logout: () => void;
   isAuthenticated: boolean;
   authReady: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -93,6 +96,31 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const refreshUser = useCallback(async () => {
+    const currentToken = token;
+    if (!currentToken) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/me`, {
+        headers: { Authorization: `Bearer ${currentToken}` },
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json() as { user: User | null };
+      if (data.user) {
+        setUserState(data.user);
+        localStorage.setItem("authUser", JSON.stringify(data.user));
+      }
+    } catch {
+      // silently ignore transient failures
+    }
+  }, [token]);
+
   return (
     <AppContext.Provider
       value={{
@@ -103,6 +131,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         logout,
         isAuthenticated: !!token,
         authReady,
+        refreshUser,
       }}
     >
       {children}

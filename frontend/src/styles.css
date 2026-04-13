@@ -5,16 +5,6 @@
   color: var(--text-primary);
   background: var(--app-bg-gradient);
   --app-header-height: 72px;
-  /** 
-   * ✅ NOTIFICATION ANIMATION TIMING
-   * Default CSS variable for notification duration (can be overridden per-notification).
-   * Actual durations per type are set in Config_tuner.ts:
-   *   - info: 3800ms
-   *   - success: 3800ms
-   *   - warning: 4600ms
-   *   - error: 5600ms
-   * Notifications override this via inline style: --notification-duration={durationMs}ms
-   */
   --notification-duration: 3800ms;
 }
 
@@ -84,62 +74,6 @@ textarea {
 .app-shell {
   min-height: 100vh;
 }
-
-/* ============================================================================
-   NOTIFICATION SYSTEM - Complete Style Reference
-   ============================================================================
-   
-   This section controls all visual aspects of toast notifications.
-   ALL TUNABLES are now centralized in: frontend/src/config/Config_tuner.ts
-   
-   Instead of editing these CSS values directly, modify Config_tuner.ts where
-   you'll find extensive comments explaining each parameter.
-   
-   MAPPING GUIDE (CSS class → Config_tuner property):
-   
-   .app-notification-stack:
-     position: top = NOTIFICATION_LAYOUT.stackTopOffsetRem (1rem)
-     position: right = NOTIFICATION_LAYOUT.stackRightOffsetRem (1rem)
-     z-index = NOTIFICATION_LAYOUT.zIndex (220)
-     width = NOTIFICATION_LAYOUT.maxWidthRem (22.5rem ≈ 360px)
-     gap = NOTIFICATION_LAYOUT.stackGapRem (0.75rem)
-   
-   .app-notification:
-     padding = NOTIFICATION_VISUAL.padding* (0.9/0.95/0.95rem)
-     border-radius = NOTIFICATION_VISUAL.borderRadiusPx (14px)
-     gap = NOTIFICATION_VISUAL.contentGapRem (0.8rem)
-     animation-duration = NOTIFICATION_DURATIONS per type OR custom durationMs
-   
-   .app-notification-icon:
-     width, height = NOTIFICATION_VISUAL.iconSizeRem (1.9rem)
-     font-size = NOTIFICATION_VISUAL.iconFontSizeRem (0.72rem)
-     content = NOTIFICATION_TYPE_LABELS (i, OK, !, x)
-   
-   .app-notification-close:
-     width, height = NOTIFICATION_VISUAL.closeButtonSizeRem (1.7rem)
-   
-   .app-notification-progress:
-     height = NOTIFICATION_VISUAL.progressBarHeightRem (0.1875rem or 3px)
-     animation-duration = per-notification --notification-duration
-   
-   @keyframes notification-life:
-     animation keyframe percentages and scale/translate properties
-     defined at NOTIFICATION_ANIMATION parameters
-     duration = NOTIFICATION_DURATIONS per type
-   
-   @keyframes notification-progress:
-     duration = NOTIFICATION_DURATIONS per type
-   
-   @media (max-width: 900px):
-     NOTIFICATION_RESPONSIVE.mobileBreakpointPx (900px)
-   
-   COLORS (theme variables, update in Config_tuner.ts reference):
-     success accent = --rarity-common-text (green)
-     warning accent = --rarity-legendary-text (gold)
-     error accent = --text-error (red)
-     info accent = --button-bg (blue)
-   
-   ============================================================================ */
 
 .app-notification-stack {
   position: fixed;
@@ -261,20 +195,14 @@ textarea {
 }
 
 @keyframes notification-life {
-  /* Initial state: Toast invisible, scaled down, positioned above final position */
   0% {
     opacity: 0;
     transform: translateY(-10px) scale(0.98);
   }
-  /* Full visibility: Toast fully visible, normal scale, stable position */
-  /* Percentage = NOTIFICATION_ANIMATION.fadeInPercentage (8%) */
-  8%, 
-  /* Fade out starts at this percentage = NOTIFICATION_ANIMATION.fadeOutPercentage (82%) */
-  82% {
+  8%, 82% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  /* Final state: Toast invisible, scaled down, positioned above final position */
   100% {
     opacity: 0;
     transform: translateY(-6px) scale(0.985);
@@ -282,12 +210,9 @@ textarea {
 }
 
 @keyframes notification-progress {
-  /* Progress bar starts at full width */
   from {
     transform: scaleX(1);
   }
-  /* Progress bar shrinks to 0 width over the animation duration */
-  /* Animation duration = per-notification NOTIFICATION_DURATIONS (3800ms - 5600ms) */
   to {
     transform: scaleX(0);
   }
@@ -1344,8 +1269,9 @@ textarea {
 
 .lootbox-case-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.1rem;
+  align-content: start;
 }
 
 .lootbox-empty-state {
@@ -1359,6 +1285,8 @@ textarea {
   border: 1px solid var(--border-card);
   border-radius: 14px;
   overflow: hidden;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
 }
 
@@ -1377,10 +1305,13 @@ textarea {
 
 .lootbox-select-button {
   width: 100%;
+  height: 100%;
   text-align: left;
   background: transparent;
   color: inherit;
   padding: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 .lootbox-select-button:hover {
@@ -1412,6 +1343,7 @@ textarea {
 .lootbox-card-content {
   padding: 1rem;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.75rem;
 }
 
@@ -1421,6 +1353,11 @@ textarea {
   line-height: 1.3;
   white-space: normal;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.3em * 2);
 }
 
 .lootbox-card-title-row {
@@ -1484,12 +1421,37 @@ textarea {
   background: transparent;
 }
 
+.lootbox-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 1fr);
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.lootbox-detail-media-stage {
+  min-height: clamp(260px, 38vh, 360px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in oklab, var(--surface-input) 88%, transparent);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0.45rem 0.2rem 0.45rem 0.35rem;
+  overflow: hidden;
+}
+
 .lootbox-detail-image {
-  width: 100%;
-  max-height: min(30vh, 220px);
-  object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid var(--border-card);
+  display: block;
+  width: 104%;
+  max-width: none;
+  height: clamp(240px, 36vh, 340px);
+  max-height: 100%;
+  margin: 0;
+  object-fit: contain;
+  object-position: top left;
+  border-radius: 0;
+  border: none;
+  background: transparent;
 }
 
 .lootbox-price-line {
@@ -1514,16 +1476,21 @@ textarea {
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 10px;
   padding: 0.52rem 0.62rem;
+  min-height: calc(1.35em * 2 + 1.04rem);
 }
 
 .lootbox-description-panel p {
   margin: 0;
   font-size: 0.88rem;
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .lootbox-detail-modal {
-  max-width: var(--modal-max-sm);
+  max-width: min(1060px, 96vw);
 }
 
 .lootbox-description-panel-modal {
@@ -1533,6 +1500,7 @@ textarea {
 .lootbox-modal-action-row {
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 .lootbox-price-tag-modal {
@@ -1540,21 +1508,40 @@ textarea {
 }
 
 .lootbox-open-cluster {
-  display: inline-flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: auto auto minmax(180px, 1fr);
+  align-items: center;
   justify-content: center;
-  gap: 0.55rem;
-  padding: 0.45rem;
-  border-radius: 16px;
-  border: 1px solid var(--border-card);
-  background: color-mix(in oklab, var(--surface-input) 88%, transparent);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem;
+  border-radius: 18px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-card));
+  background:
+    radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 16%, transparent), transparent 55%),
+    color-mix(in oklab, var(--surface-input) 90%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 22px rgba(0, 0, 0, 0.22);
 }
 
 .lootbox-open-button {
   align-self: stretch;
-  min-width: 136px;
+  justify-self: end;
+  min-width: 210px;
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  background: linear-gradient(135deg, #29b4ff 0%, #2f7dff 100%);
+  color: #f5fbff;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 8px 18px rgba(44, 120, 255, 0.35);
+}
+
+.lootbox-open-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #44c2ff 0%, #1f67f3 100%);
+}
+
+.lootbox-open-button:active:not(:disabled) {
+  background: linear-gradient(135deg, #1f9fe6 0%, #2158cf 100%);
 }
 
 .lootbox-modal-backdrop {
@@ -1761,26 +1748,37 @@ textarea {
   gap: 0.55rem;
 }
 
+.lootbox-stats-grid-compact {
+  gap: 0.45rem;
+}
+
 .lootbox-stat-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  padding: 0.5rem 0.65rem;
+  padding: 0.42rem 0.58rem;
   background: color-mix(in oklab, var(--surface-input) 86%, transparent);
   display: grid;
-  gap: 0.2rem;
+  gap: 0.1rem;
 }
 
 .lootbox-stat-card strong {
-  font-size: 1rem;
+  font-size: 0.94rem;
+}
+
+.lootbox-stats-grid-compact .muted {
+  font-size: 0.75rem;
 }
 
 .lootbox-recent-preview {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  padding: 0.5rem 0.65rem;
+  padding: 0.7rem 0.75rem;
   background: color-mix(in oklab, var(--surface-input) 88%, transparent);
-  width: min(100%, 340px);
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
+  min-height: clamp(260px, 38vh, 360px);
+  display: grid;
+  grid-template-rows: auto 1fr;
 }
 
 .lootbox-recent-preview h4 {
@@ -1789,43 +1787,49 @@ textarea {
 
 .lootbox-recent-list {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.45rem;
+  align-content: start;
 }
 
 .lootbox-recent-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: 112px 44px minmax(0, 1fr);
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.6rem;
   font-size: 0.86rem;
   text-align: left;
 }
 
 .lootbox-recent-item {
-  justify-self: start;
+  justify-self: end;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
   width: 100%;
-  max-width: 150px;
+  max-width: none;
+  padding-left: 0;
+  text-align: right;
 }
 
 .lootbox-recent-user {
   font-weight: 600;
   color: var(--text-primary);
   justify-self: start;
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
-  width: 100%;
-  max-width: 120px;
+  min-width: 112px;
+  width: 112px;
+  max-width: 112px;
   text-align: left;
 }
 
 .lootbox-recent-verb {
   justify-self: center;
+  width: 44px;
+  min-width: 44px;
   text-align: center;
   white-space: nowrap;
 }
@@ -1955,7 +1959,18 @@ textarea {
     max-width: 100%;
   }
 
+  .lootbox-detail-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lootbox-detail-media-stage {
+    min-height: 190px;
+    padding: 0.75rem;
+  }
+
   .lootbox-detail-image {
+    max-width: 100%;
+    height: min(26vh, 220px);
     max-height: 28vh;
   }
 
@@ -2000,13 +2015,17 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .lootbox-recent-preview {
+    min-height: 0;
+  }
+
   .lootbox-droppool-list {
     max-height: clamp(200px, 50vh, 520px);
   }
 }
 
 .lootbox-reel-modal {
-  max-width: var(--modal-max-lg);
+  max-width: min(1460px, 98vw);
   gap: 1rem;
 }
 
@@ -2016,7 +2035,7 @@ textarea {
   border-radius: 12px;
   border: 1px solid var(--border-card);
   background: color-mix(in oklab, var(--surface-input) 86%, transparent);
-  padding: 0.8rem 0;
+  padding: 1.1rem 0;
 }
 
 .lootbox-reel-center-marker {
@@ -2106,17 +2125,17 @@ textarea {
 
 .lootbox-reel-strip {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   width: max-content;
   will-change: transform;
 }
 
 .lootbox-reel-card {
-  width: 120px;
-  min-width: 120px;
+  width: 148px;
+  min-width: 148px;
   display: grid;
-  gap: 0.4rem;
-  padding: 0.45rem;
+  gap: 0.45rem;
+  padding: 0.55rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: var(--surface-card);
@@ -2149,7 +2168,7 @@ textarea {
 }
 
 .lootbox-reel-name {
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2724,6 +2743,67 @@ textarea {
   text-align: right;
 }
 
+.wallet-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0.65rem 0 0.8rem;
+}
+
+.wallet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--border-card));
+  padding: 0.45rem 0.72rem;
+  background:
+    linear-gradient(155deg, color-mix(in oklab, var(--surface-input) 93%, transparent), color-mix(in oklab, var(--accent) 10%, transparent));
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.wallet-chip-label {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.wallet-chip strong {
+  font-size: 0.94rem;
+}
+
+.wallet-chip-cost {
+  border-color: var(--price-chip-border);
+  background: var(--price-chip-bg);
+  color: var(--price-chip-text);
+}
+
+.wallet-chip-balance {
+  border-color: color-mix(in oklab, #33d4ff 45%, var(--border-card));
+}
+
+@media (max-width: 900px) {
+  .lootbox-open-cluster {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .lootbox-open-button {
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+  }
+
+  .wallet-chip-row {
+    margin-top: 0.45rem;
+  }
+}
+
 .market-listings-scroll {
   min-height: 0;
   max-height: clamp(260px, 54vh, 560px);
@@ -2818,15 +2898,25 @@ textarea {
 
 .market-buy-button {
   position: relative;
-  border-radius: 999px;
-  padding: 0.55rem 1.4rem;
+  border-radius: 12px;
+  padding: 0.72rem 1.2rem;
   font-weight: 700;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.26);
+  background: linear-gradient(135deg, #29b4ff 0%, #2f7dff 100%);
+  color: #f5fbff;
+  box-shadow: 0 8px 18px rgba(44, 120, 255, 0.35);
+}
+
+.market-buy-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #44c2ff 0%, #1f67f3 100%);
+}
+
+.market-buy-button:active:not(:disabled) {
+  background: linear-gradient(135deg, #1f9fe6 0%, #2158cf 100%);
 }
 
 .market-buy-button-large {
-  font-size: 0.95rem;
-  min-width: 124px;
+  font-size: 0.96rem;
+  min-width: 210px;
 }
 
 .market-detail-copy {
@@ -2884,10 +2974,27 @@ textarea {
 
 .market-detail-actions {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.6rem;
+  justify-content: center;
   padding-top: 0.15rem;
+}
+
+.market-purchase-strip {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(180px, 1fr);
+  align-items: center;
+  gap: 0.6rem;
+  width: min(100%, 980px);
+  padding: 0.65rem;
+  border-radius: 18px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-card));
+  background:
+    radial-gradient(circle at top right, color-mix(in oklab, var(--accent) 16%, transparent), transparent 55%),
+    color-mix(in oklab, var(--surface-input) 90%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+.market-purchase-spacer {
+  min-width: 0;
 }
 
 .market-find-wrap {
@@ -3045,8 +3152,21 @@ textarea {
     align-items: stretch;
   }
 
+  .market-purchase-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .market-find-wrap {
+    width: 100%;
+  }
+
+  .market-find-trigger-button,
   .market-buy-button-large {
-    min-width: 120px;
+    width: 100%;
+  }
+
+  .market-buy-button-large {
+    min-width: 0;
   }
 }
 
@@ -3056,6 +3176,10 @@ textarea {
   }
 
   .market-catalog-grid-types {
+    grid-template-columns: 1fr;
+  }
+
+  .market-purchase-strip {
     grid-template-columns: 1fr;
   }
 

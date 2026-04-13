@@ -1,10 +1,12 @@
 import type { CSSProperties } from "react";
 import { useNotifications } from "../context/NotificationContext";
-import { NOTIFICATION_TYPE_LABELS } from "../config/Config_tuner";
 
-// ✅ TUNING: Type icons are defined in Config_tuner.ts
-// Change them there to use ✓, ★, ⚠, etc. instead of i, OK, !, x
-const TYPE_LABELS = NOTIFICATION_TYPE_LABELS;
+const TYPE_LABELS = {
+  info: "i",
+  success: "OK",
+  warning: "!",
+  error: "x",
+} as const;
 
 const NotificationViewport = () => {
   const { notifications, dismissNotification } = useNotifications();

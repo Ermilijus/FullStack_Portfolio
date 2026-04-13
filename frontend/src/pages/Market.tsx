@@ -51,6 +51,17 @@ const formatUsd = (value: number) => {
   }).format(value);
 };
 
+const formatGrouped = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
 const clampFloatDisplay = (value: number) => value.toFixed(6);
 
 
@@ -107,7 +118,7 @@ const toggleArrayValue = (values: string[], value: string) => {
 };
 
 const Market = () => {
-  const { token } = useAppContext();
+  const { token, user, refreshUser } = useAppContext();
   const { notifyError, notifySuccess } = useNotifications();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -786,6 +797,7 @@ const Market = () => {
       closeDetailsModal();
       setRefreshKey((current) => current + 1);
       setMyRefreshKey((current) => current + 1);
+      void refreshUser();
     } catch (purchaseError) {
       setError(purchaseError instanceof Error ? purchaseError.message : "Failed to purchase listing");
     }
@@ -840,6 +852,16 @@ const Market = () => {
       <div className="page-title-row">
         <h1>Market</h1>
         <span className="muted">{visibleCountLabel}</span>
+      </div>
+      <div className="wallet-chip-row">
+        <span className="wallet-chip">
+          <span className="wallet-chip-label">Currency</span>
+          <strong>{formatUsd(user?.currency ?? 0)}</strong>
+        </span>
+        <span className="wallet-chip">
+          <span className="wallet-chip-label">Shards</span>
+          <strong>{formatGrouped(user?.specialCurrency ?? 0)}</strong>
+        </span>
       </div>
 
       <nav className="market-breadcrumbs" aria-label="Market navigation breadcrumbs">
@@ -1355,8 +1377,8 @@ const Market = () => {
               </button>
               <div className="market-account-summary muted">
                 <span>USD Est: {formatUsd(myAccountSummary.realWorldUsdEstimate)}</span>
-                <span>Credits: {myAccountSummary.currency}</span>
-                <span>Special: {myAccountSummary.specialCurrency}</span>
+                <span>Currency: {formatUsd(myAccountSummary.currency)}</span>
+                <span>Shards: {formatGrouped(myAccountSummary.specialCurrency)}</span>
               </div>
             </div>
 
@@ -1499,7 +1521,7 @@ const Market = () => {
 
       {selectedListingId && (
         <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={closeDetailsModal}>
-          <article className="lootbox-modal market-detail-modal ui-modal modal-md" onClick={(event) => event.stopPropagation()}>
+          <article className="lootbox-modal market-detail-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
             {detailsLoading || !selectedListing ? (
               <p className="muted">Loading listing details...</p>
             ) : (
@@ -1553,45 +1575,57 @@ const Market = () => {
                 </div>
 
                 <div className="market-detail-actions">
-                  {selectedListing.activeLootboxes.length > 0 ? (
-                    <div className={`market-find-wrap${isFindMenuOpen ? " is-open" : ""}`}>
-                      <button
-                        type="button"
-                        className="market-find-trigger market-find-trigger-button"
-                        onClick={() => setIsFindMenuOpen((current) => !current)}
-                      >
-                        Find in lootboxes
-                      </button>
-                      <ul className="market-find-menu">
-                        {selectedListing.activeLootboxes.map((lootbox) => (
-                          <li key={lootbox.id}>
-                            <button
-                              type="button"
-                              className="market-find-link"
-                              onClick={() => {
-                                setIsFindMenuOpen(false);
-                                handleOpenLootboxFromDetail(lootbox.id);
-                              }}
-                            >
-                              {lootbox.name}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <span />
-                  )}
+                  <div className="market-purchase-strip">
+                    <span className="wallet-chip wallet-chip-cost">
+                      <span className="wallet-chip-label">Price</span>
+                      <strong>{formatUsd(selectedListing.listedPriceUsd)}</strong>
+                    </span>
 
-                  {detailsActionMode === "buy" ? (
-                    <button type="button" className="market-buy-button market-buy-button-large" onClick={handleBuyListing}>
-                      Purchase
-                    </button>
-                  ) : (
-                    <button type="button" className="market-buy-button market-buy-button-large" onClick={handleRemoveListing}>
-                      Remove
-                    </button>
-                  )}
+                    <span className="wallet-chip wallet-chip-balance">
+                      <span className="wallet-chip-label">Currency</span>
+                      <strong>{formatUsd(user?.currency ?? 0)} Available</strong>
+                    </span>
+
+                    {selectedListing.activeLootboxes.length > 0 ? (
+                      <div className={`market-find-wrap${isFindMenuOpen ? " is-open" : ""}`}>
+                        <button
+                          type="button"
+                          className="market-find-trigger market-find-trigger-button"
+                          onClick={() => setIsFindMenuOpen((current) => !current)}
+                        >
+                          Find in lootboxes
+                        </button>
+                        <ul className="market-find-menu">
+                          {selectedListing.activeLootboxes.map((lootbox) => (
+                            <li key={lootbox.id}>
+                              <button
+                                type="button"
+                                className="market-find-link"
+                                onClick={() => {
+                                  setIsFindMenuOpen(false);
+                                  handleOpenLootboxFromDetail(lootbox.id);
+                                }}
+                              >
+                                {lootbox.name}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <span className="market-purchase-spacer" aria-hidden="true" />
+                    )}
+
+                    {detailsActionMode === "buy" ? (
+                      <button type="button" className="market-buy-button market-buy-button-large" onClick={handleBuyListing}>
+                        Purchase Item
+                      </button>
+                    ) : (
+                      <button type="button" className="market-buy-button market-buy-button-large" onClick={handleRemoveListing}>
+                        Remove Listing
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1607,6 +1641,17 @@ const Market = () => {
               <button type="button" className="button-secondary" onClick={() => setShowInventoryModal(false)}>
                 Close
               </button>
+            </div>
+
+            <div className="wallet-chip-row">
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Currency</span>
+                <strong>{formatUsd(user?.currency ?? 0)}</strong>
+              </span>
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Shards</span>
+                <strong>{formatGrouped(user?.specialCurrency ?? 0)}</strong>
+              </span>
             </div>
 
             {inventoryLoading ? (
@@ -1652,6 +1697,17 @@ const Market = () => {
               <button type="button" className="button-secondary" onClick={() => setShowSellModal(false)}>
                 Close
               </button>
+            </div>
+
+            <div className="wallet-chip-row">
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Currency</span>
+                <strong>{formatUsd(user?.currency ?? 0)}</strong>
+              </span>
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Shards</span>
+                <strong>{formatGrouped(user?.specialCurrency ?? 0)}</strong>
+              </span>
             </div>
 
             <article className="profile-account-block">

@@ -2,10 +2,20 @@ import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import AppHeader from "./AppHeader";
 import NotificationViewport from "./NotificationViewport";
+import { useAppContext } from "../context/AppContext";
 
 const AppLayout = () => {
   const location = useLocation();
   const isMarketRoute = location.pathname === "/market";
+  const { isAuthenticated, refreshUser } = useAppContext();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    void refreshUser();
+  }, [isAuthenticated, location.pathname, refreshUser]);
 
   useEffect(() => {
     const root = document.documentElement;

@@ -30,8 +30,8 @@ const REEL_WINNER_INDEX = 39;
 const REEL_LEAD_IN_COUNT = REEL_WINNER_INDEX;
 const REEL_TAIL_COUNT = 6;
 const REEL_STRIP_LENGTH = REEL_LEAD_IN_COUNT + 1 + REEL_TAIL_COUNT;
-const REEL_CARD_WIDTH_PX = 120;
-const REEL_CARD_GAP_PX = 12;
+const REEL_CARD_WIDTH_PX = 148;
+const REEL_CARD_GAP_PX = 14;
 const REEL_CARD_STRIDE = REEL_CARD_WIDTH_PX + REEL_CARD_GAP_PX;
 const REEL_BASE_SETTLE_MS = 900;
 const REEL_MS_PER_CARD = 185;
@@ -55,6 +55,28 @@ const formatMarketPrice = (value: number | undefined) => {
   return `$${value.toFixed(2)}`;
 };
 
+const formatUsd = (value: number | undefined) => {
+  const resolved = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(resolved);
+};
+
+const formatGrouped = (value: number | undefined) => {
+  const resolved = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(resolved);
+};
+
+const formatWalletAmount = (wallet: "currency" | "specialCurrency", value: number | undefined) => {
+  return wallet === "currency" ? formatUsd(value) : formatGrouped(value);
+};
+
 const formatDropRate = (value: number | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) {
     return "N/A";
@@ -74,7 +96,7 @@ const walletLabel = (wallet: "currency" | "specialCurrency") => {
     return "Shards";
   }
 
-  return "Credits";
+  return "Currency";
 };
 
 const classifyLootbox = (name: string): LootboxCategory => {
@@ -131,7 +153,7 @@ const getReelSpinDurationMs = () => {
 };
 
 const Lootbox = () => {
-  const { token } = useAppContext();
+  const { token, user, setUser } = useAppContext();
   const { notifyError, notifySuccess } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
@@ -171,6 +193,7 @@ const Lootbox = () => {
   const markerRef = useRef<HTMLDivElement | null>(null);
   const reelNameRef = useRef<HTMLElement | null>(null);
   const reelRarityChipRef = useRef<HTMLSpanElement | null>(null);
+  const notifiedRollIdRef = useRef<string | null>(null);
 
   const selectedLootbox = useMemo(() => {
     if (!selectedLootboxId) {
@@ -410,10 +433,16 @@ const Lootbox = () => {
       return;
     }
 
+    if (notifiedRollIdRef.current === reelResult.rollId) {
+      return;
+    }
+
+    notifiedRollIdRef.current = reelResult.rollId;
+
     notifySuccess(
-      `You unboxed ${reelResult.item.name} (${reelResult.item.rarity}). ${walletLabel(reelResult.spent.wallet)} left: ${reelResult.spent.balanceAfter ?? "?"}.`,
+      `You unboxed ${reelResult.item.name} (${reelResult.item.rarity}). ${walletLabel(reelResult.spent.wallet)} left: ${formatWalletAmount(reelResult.spent.wallet, reelResult.spent.balanceAfter)}.`,
       "Lootbox",
-      5200,
+      2600,
     );
   }, [notifySuccess, reelRevealed, reelResult]);
 
@@ -644,6 +673,15 @@ const Lootbox = () => {
       setShowReelModal(true);
       setReelRunId((current) => current + 1);
 
+      if (user && typeof result.spent.balanceAfter === "number") {
+        const spendFromCurrency = result.spent.wallet === "currency";
+        setUser({
+          ...user,
+          currency: spendFromCurrency ? result.spent.balanceAfter : (user.currency ?? 0),
+          specialCurrency: !spendFromCurrency ? result.spent.balanceAfter : (user.specialCurrency ?? 0),
+        });
+      }
+
       const detail = await fetchLootboxDetail(token, selectedLootboxId);
       setDetailsById((current) => ({
         ...current,
@@ -682,6 +720,16 @@ const Lootbox = () => {
       <div className="page-title-row">
         <h1>Lootboxes</h1>
         <span className="muted">Cases by default, with packages and collections on demand</span>
+      </div>
+      <div className="wallet-chip-row">
+        <span className="wallet-chip">
+          <span className="wallet-chip-label">Currency</span>
+          <strong>{formatUsd(user?.currency)}</strong>
+        </span>
+        <span className="wallet-chip">
+          <span className="wallet-chip-label">Shards</span>
+          <strong>{formatGrouped(user?.specialCurrency)}</strong>
+        </span>
       </div>
 
       <article className="market-toolbar lootbox-toolbar ui-surface" aria-label="Lootbox catalog filters">
@@ -769,7 +817,7 @@ const Lootbox = () => {
                       <h3>{lootbox.name}</h3>
                       <span className="lootbox-price-tag">
                         <span className="lootbox-price-label">{walletLabel(lootbox.spendCurrency)}</span>
-                        <strong>{lootbox.cost}</strong>
+                        <strong>{formatWalletAmount(lootbox.spendCurrency, lootbox.cost)}</strong>
                       </span>
                     </div>
                     <div className="lootbox-description-panel">
@@ -794,7 +842,7 @@ const Lootbox = () => {
 
       {showDetailsModal && selectedLootbox && (
         <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={() => setShowDetailsModal(false)}>
-          <article className="lootbox-modal lootbox-detail-modal ui-modal modal-sm" onClick={(event) => event.stopPropagation()}>
+          <article className="lootbox-modal lootbox-detail-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>{selectedLootbox.name}</h3>
               <div className="compact-row">
@@ -813,36 +861,46 @@ const Lootbox = () => {
               </div>
             </div>
 
-            {selectedLootbox.image && (
-              <img
-                src={selectedLootbox.image}
-                alt={selectedLootbox.name}
-                className="lootbox-detail-image"
-              />
-            )}
+            <div className="lootbox-detail-layout">
+              {selectedLootbox.image && (
+                <div className="lootbox-detail-media-stage">
+                  <img
+                    src={selectedLootbox.image}
+                    alt={selectedLootbox.name}
+                    className="lootbox-detail-image"
+                  />
+                </div>
+              )}
 
-            <div className="lootbox-description-panel lootbox-description-panel-modal">
-              <p className="muted">{selectedLootbox.description ?? "No description yet."}</p>
-            </div>
-
-            <div className="lootbox-modal-action-row">
-              <div className="lootbox-open-cluster">
-                <span className="lootbox-price-tag lootbox-price-tag-modal">
-                  <span className="lootbox-price-label">{walletLabel(selectedLootbox.spendCurrency)}</span>
-                  <strong>{selectedLootbox.cost}</strong>
-                </span>
-                <button
-                  type="button"
-                  className="lootbox-open-button"
-                  onClick={handleOpenLootbox}
-                  disabled={openBusy || reelSpinning}
-                >
-                  {openBusy ? "Opening..." : "Open Lootbox"}
-                </button>
+              <div className="lootbox-recent-preview">
+                <h4>Recent Drops</h4>
+                {selectedDetail?.recentDrops.length ? (
+                  <div className="lootbox-recent-list">
+                    {selectedDetail.recentDrops.slice(0, 7).map((drop) => (
+                      <div key={drop.rollId} className="lootbox-recent-row">
+                        <span
+                          className="muted lootbox-recent-user"
+                          title={drop.droppedBy}
+                        >
+                          {drop.droppedBy}
+                        </span>
+                        <span className="muted lootbox-recent-verb">Got</span>
+                        <span
+                          className={`lootbox-recent-item ${rarityClass(drop.item.rarity)}`}
+                          title={drop.item.name}
+                        >
+                          {drop.item.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted">No recent drops yet.</p>
+                )}
               </div>
             </div>
 
-            <div className="lootbox-stats-grid">
+            <div className="lootbox-stats-grid lootbox-stats-grid-compact">
               <article className="lootbox-stat-card">
                 <span className="muted">Total Opens</span>
                 <strong>{selectedDetail?.stats.totalOpens ?? 0}</strong>
@@ -853,31 +911,29 @@ const Lootbox = () => {
               </article>
             </div>
 
-            <div className="lootbox-recent-preview">
-              <h4>Recent Drops</h4>
-              {selectedDetail?.recentDrops.length ? (
-                <div className="lootbox-recent-list">
-                  {selectedDetail.recentDrops.slice(0, 4).map((drop) => (
-                    <div key={drop.rollId} className="lootbox-recent-row">
-                      <span
-                        className="muted lootbox-recent-user"
-                        title={drop.droppedBy}
-                      >
-                        {drop.droppedBy}
-                      </span>
-                      <span className="muted lootbox-recent-verb">got</span>
-                      <span
-                        className={`lootbox-recent-item ${rarityClass(drop.item.rarity)}`}
-                        title={drop.item.name}
-                      >
-                        {drop.item.name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">No recent drops yet.</p>
-              )}
+            <div className="lootbox-modal-action-row">
+              <div className="lootbox-open-cluster">
+                <span className="wallet-chip wallet-chip-cost">
+                  <span className="wallet-chip-label">Cost</span>
+                  <strong>{formatWalletAmount(selectedLootbox.spendCurrency, selectedLootbox.cost)} {walletLabel(selectedLootbox.spendCurrency)}</strong>
+                </span>
+                <span className="wallet-chip wallet-chip-balance">
+                  <span className="wallet-chip-label">Balance</span>
+                  <strong>
+                    {selectedLootbox.spendCurrency === "currency"
+                      ? `${formatUsd(user?.currency)} Currency`
+                      : `${formatGrouped(user?.specialCurrency)} Shards`}
+                  </strong>
+                </span>
+                <button
+                  type="button"
+                  className="lootbox-open-button"
+                  onClick={handleOpenLootbox}
+                  disabled={openBusy || reelSpinning}
+                >
+                  {openBusy ? "Opening..." : "Open Lootbox"}
+                </button>
+              </div>
             </div>
 
             <div className="compact-row">
@@ -964,7 +1020,7 @@ const Lootbox = () => {
 
       {showReelModal && reelResult && (
         <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={handleCloseReel}>
-          <article className="lootbox-modal lootbox-reel-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
+          <article className="lootbox-modal lootbox-reel-modal ui-modal modal-xl" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>Opening {reelResult.lootbox.name}</h3>
               <div className="compact-row">
@@ -1017,7 +1073,14 @@ const Lootbox = () => {
                   <span className={`lootbox-rarity-chip ${rarityClass(reelResult.item.rarity)}`}>{reelResult.item.rarity}</span>
                   <span className="muted">{formatMarketPrice(reelResult.item.marketPrice)}</span>
                 </>
-              ) : (
+              ) : null}
+              {reelRevealed && typeof reelResult.spent.balanceAfter === "number" && (
+                <span className="wallet-chip">
+                  <span className="wallet-chip-label">{walletLabel(reelResult.spent.wallet)} left</span>
+                  <strong>{formatWalletAmount(reelResult.spent.wallet, reelResult.spent.balanceAfter)}</strong>
+                </span>
+              )}
+              {!reelRevealed && (
                 <>
                   <span className="muted">{reelSpinning ? "Rolling..." : "Ready"}</span>
                   <strong ref={reelNameRef as React.RefObject<HTMLElement>} className="consumer">...</strong>

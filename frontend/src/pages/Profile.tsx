@@ -93,8 +93,26 @@ const deriveInventoryUnit = (entry: ProfileInventoryItem, index: number): Invent
 
 const rarityClass = (rarity: string) => rarity.trim().toLowerCase();
 
+const formatUsd = (value: number | undefined) => {
+  const resolved = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(resolved);
+};
+
+const formatGrouped = (value: number | undefined) => {
+  const resolved = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(resolved);
+};
+
 const Profile = () => {
-  const { user, setUser, token } = useAppContext();
+  const { user, setUser, token, refreshUser } = useAppContext();
   const { notifyError, notifyInfo, notifySuccess } = useNotifications();
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -351,6 +369,8 @@ const Profile = () => {
       email: payload.email ?? "",
       role: payload.role,
       avatar: payload.avatar ?? undefined,
+      currency: user?.currency,
+      specialCurrency: user?.specialCurrency,
     });
 
     setProfile((current) => {
@@ -582,6 +602,7 @@ const Profile = () => {
       setInventoryItems(refreshedInventory);
       setShowSellModal(false);
       setSellTargetItem(null);
+      void refreshUser();
       setSellFeedback(null);
       setInventoryError(null);
       notifySuccess("Listing created from inventory.", "Profile");
@@ -602,6 +623,16 @@ const Profile = () => {
         <button type="button" className="profile-inventory-launch" onClick={openInventoryModal}>
           Open Inventory
         </button>
+      </div>
+      <div className="wallet-chip-row">
+        <span className="wallet-chip">
+          <span className="wallet-chip-label">Currency</span>
+          <strong>{formatUsd(user?.currency)}</strong>
+        </span>
+        <span className="wallet-chip">
+          <span className="wallet-chip-label">Shards</span>
+          <strong>{formatGrouped(user?.specialCurrency)}</strong>
+        </span>
       </div>
 
       <article className="card profile-identity-card">
@@ -658,7 +689,7 @@ const Profile = () => {
               <article key={lootbox.id} className="card compact-row">
                 <div>
                   <strong>{lootbox.name}</strong>
-                  <p className="muted" style={{ marginBottom: 0 }}>{lootbox.cost} credits</p>
+                  <p className="muted" style={{ marginBottom: 0 }}>{formatUsd(lootbox.cost)} Currency</p>
                 </div>
                 <Link to={`/lootbox?lootbox=${encodeURIComponent(lootbox.id)}`} className="profile-lootbox-link">
                   View Case
@@ -688,7 +719,7 @@ const Profile = () => {
                   {forumPosts.slice(0, 6).map((post) => (
                     <article key={post.id} className="card">
                       <strong>{post.title}</strong>
-                      <p className="muted">{post.category.name} Ã‚Â· {post.replyCount} replies</p>
+                      <p className="muted">{post.category.name} - {post.replyCount} replies</p>
                     </article>
                   ))}
                 </div>
@@ -835,6 +866,17 @@ const Profile = () => {
               </button>
             </div>
 
+            <div className="wallet-chip-row">
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Currency</span>
+                <strong>{formatUsd(user?.currency)}</strong>
+              </span>
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Shards</span>
+                <strong>{formatGrouped(user?.specialCurrency)}</strong>
+              </span>
+            </div>
+
             {inventoryLoading ? (
               <p className="muted">Loading inventory...</p>
             ) : inventoryUnits.length === 0 ? (
@@ -878,6 +920,17 @@ const Profile = () => {
               <button type="button" className="button-secondary" onClick={() => setShowSellModal(false)}>
                 Close
               </button>
+            </div>
+
+            <div className="wallet-chip-row">
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Currency</span>
+                <strong>{formatUsd(user?.currency)}</strong>
+              </span>
+              <span className="wallet-chip">
+                <span className="wallet-chip-label">Shards</span>
+                <strong>{formatGrouped(user?.specialCurrency)}</strong>
+              </span>
             </div>
 
             <article className="profile-account-block">
