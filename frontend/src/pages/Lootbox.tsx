@@ -11,9 +11,11 @@ import {
   removeLootboxFavorite,
 } from "../api";
 import { useAppContext } from "../context/AppContext";
+import { useNotifications } from "../context/NotificationContext";
 
 type SortKey = "name" | "rarity" | "marketPrice";
 type SortDirection = "asc" | "desc";
+type LootboxCategory = "case" | "package" | "collection";
 type ReelVisualItem = {
   id: string;
   name: string;
@@ -36,10 +38,13 @@ const REEL_MS_PER_CARD = 185;
 const REEL_TEXT_INDEX_BIAS = 0.32;
 
 const RARITY_RANK: Record<string, number> = {
-  common: 1,
-  rare: 2,
-  epic: 3,
-  legendary: 4,
+  consumer: 1,
+  industrial: 2,
+  "mil-spec": 3,
+  restricted: 4,
+  classified: 5,
+  covert: 6,
+  contraband: 7,
 };
 
 const formatMarketPrice = (value: number | undefined) => {
@@ -50,19 +55,19 @@ const formatMarketPrice = (value: number | undefined) => {
   return `$${value.toFixed(2)}`;
 };
 
-const rarityClass = (rarity: string) => {
-  const normalized = rarity.toLowerCase();
-  if (normalized === "legendary") {
-    return "legendary";
+const formatDropRate = (value: number | undefined) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "N/A";
   }
-  if (normalized === "epic") {
-    return "epic";
+
+  if (value > 0 && value < 0.0001) {
+    return "<0.0001%";
   }
-  if (normalized === "rare") {
-    return "rare";
-  }
-  return "common";
+
+  return `${value.toFixed(4)}%`;
 };
+
+const rarityClass = (rarity: string) => rarity.trim().toLowerCase();
 
 const walletLabel = (wallet: "currency" | "specialCurrency") => {
   if (wallet === "specialCurrency") {
@@ -70,6 +75,20 @@ const walletLabel = (wallet: "currency" | "specialCurrency") => {
   }
 
   return "Credits";
+};
+
+const classifyLootbox = (name: string): LootboxCategory => {
+  const normalizedName = name.trim().toLowerCase();
+
+  if (normalizedName.includes("collection")) {
+    return "collection";
+  }
+
+  if (normalizedName.includes("souvenir package") || normalizedName.includes("package")) {
+    return "package";
+  }
+
+  return "case";
 };
 
 const createRequestId = () => {
@@ -113,6 +132,7 @@ const getReelSpinDurationMs = () => {
 
 const Lootbox = () => {
   const { token } = useAppContext();
+  const { notifyError, notifySuccess } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -123,10 +143,11 @@ const Lootbox = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showDropPoolModal, setShowDropPoolModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [favoriteBusyId, setFavoriteBusyId] = useState<string | null>(null);
   const [openBusy, setOpenBusy] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [includePackages, setIncludePackages] = useState(false);
+  const [includeCollections, setIncludeCollections] = useState(false);
   const [dropSortKey, setDropSortKey] = useState<SortKey>("rarity");
   const [dropSortDirection, setDropSortDirection] = useState<SortDirection>("desc");
   const [showReelModal, setShowReelModal] = useState(false);
@@ -160,6 +181,42 @@ const Lootbox = () => {
   }, [lootboxes, selectedLootboxId]);
 
   const selectedDetail = selectedLootboxId ? detailsById[selectedLootboxId] : undefined;
+
+  const searchQuery = catalogSearch.trim().toLowerCase();
+
+  const lootboxCounts = useMemo(() => {
+    return lootboxes.reduce(
+      (counts, lootbox) => {
+        counts[classifyLootbox(lootbox.name)] += 1;
+        return counts;
+      },
+      { case: 0, package: 0, collection: 0 } satisfies Record<LootboxCategory, number>,
+    );
+  }, [lootboxes]);
+
+  const visibleLootboxes = useMemo(() => {
+    return lootboxes.filter((lootbox) => {
+      const matchesSearch =
+        searchQuery.length === 0
+        || lootbox.name.toLowerCase().includes(searchQuery)
+        || lootbox.description?.toLowerCase().includes(searchQuery);
+
+      if (searchQuery.length > 0) {
+        return matchesSearch;
+      }
+
+      const category = classifyLootbox(lootbox.name);
+      if (category === "package") {
+        return includePackages;
+      }
+
+      if (category === "collection") {
+        return includeCollections;
+      }
+
+      return true;
+    });
+  }, [includeCollections, includePackages, lootboxes, searchQuery]);
 
   const clearReelFinishTimer = () => {
     if (reelFinishTimerRef.current !== null) {
@@ -353,10 +410,12 @@ const Lootbox = () => {
       return;
     }
 
-    setStatusMessage(
+    notifySuccess(
       `You unboxed ${reelResult.item.name} (${reelResult.item.rarity}). ${walletLabel(reelResult.spent.wallet)} left: ${reelResult.spent.balanceAfter ?? "?"}.`,
+      "Lootbox",
+      5200,
     );
-  }, [reelRevealed, reelResult]);
+  }, [notifySuccess, reelRevealed, reelResult]);
 
   useEffect(() => {
     return () => {
@@ -416,7 +475,6 @@ const Lootbox = () => {
 
     const loadCatalog = async () => {
       setLoading(true);
-      setError(null);
 
       try {
         const catalog = await fetchLootboxCatalog(token);
@@ -432,7 +490,7 @@ const Lootbox = () => {
         setSelectedLootboxId(defaultSelectedId);
         setShowDetailsModal(Boolean(defaultSelectedId && queryOpen === "details"));
       } catch {
-        setError("Could not load lootboxes right now.");
+        notifyError("Could not load lootboxes right now.", "Lootbox");
       } finally {
         setLoading(false);
       }
@@ -451,7 +509,7 @@ const Lootbox = () => {
         const detail = await fetchLootboxDetail(token, selectedLootboxId);
         setDetailsById((current) => ({ ...current, [selectedLootboxId]: detail }));
       } catch {
-        setStatusMessage("Could not load full drop pool details.");
+        notifyError("Could not load full drop pool details.", "Lootbox");
       }
     };
 
@@ -540,7 +598,7 @@ const Lootbox = () => {
           },
         };
       });
-      setStatusMessage("Could not update favorite right now.");
+      notifyError("Could not update favorite right now.", "Lootbox");
     } finally {
       setFavoriteBusyId(null);
     }
@@ -552,7 +610,6 @@ const Lootbox = () => {
     }
 
     setOpenBusy(true);
-    setStatusMessage(null);
 
     try {
       const result = await openLootbox(token, selectedLootboxId, createRequestId());
@@ -593,7 +650,7 @@ const Lootbox = () => {
         [selectedLootboxId]: detail,
       }));
     } catch (openError) {
-      setStatusMessage(openError instanceof Error ? openError.message : "Could not open lootbox right now.");
+      notifyError(openError instanceof Error ? openError.message : "Could not open lootbox right now.", "Lootbox");
     } finally {
       setOpenBusy(false);
     }
@@ -621,22 +678,68 @@ const Lootbox = () => {
   };
 
   return (
-    <section className="lootbox-page">
+    <section className="lootbox-page ui-section">
       <div className="page-title-row">
-        <h1>Lootbox Cases</h1>
-        <span className="muted">Curated cases with active drop pools</span>
+        <h1>Lootboxes</h1>
+        <span className="muted">Cases by default, with packages and collections on demand</span>
       </div>
 
-      {statusMessage && <p className="lootbox-status muted">{statusMessage}</p>}
-      {error && <p className="error">{error}</p>}
+      <article className="market-toolbar lootbox-toolbar ui-surface" aria-label="Lootbox catalog filters">
+        <div className="market-toolbar-left">
+          <div className="market-search-wrap">
+            <input
+              value={catalogSearch}
+              onChange={(event) => setCatalogSearch(event.target.value)}
+              placeholder="Search all cases, collections, and packages"
+              aria-label="Search all lootboxes"
+            />
+          </div>
+        </div>
+
+        <div className="market-sort-wrap lootbox-toolbar-summary">
+          <span className="lootbox-toolbar-count">Cases {lootboxCounts.case}</span>
+          <span className="lootbox-toolbar-note muted">
+            {searchQuery.length > 0
+              ? `Search results: ${visibleLootboxes.length}`
+              : "Search ignores the type toggles and scans the full catalog."}
+          </span>
+        </div>
+
+        <div className="market-toolbar-right lootbox-toolbar-right">
+          <label className={`lootbox-toolbar-toggle${includePackages ? " is-active" : ""}`}>
+            <input
+              type="checkbox"
+              checked={includePackages}
+              onChange={(event) => setIncludePackages(event.target.checked)}
+            />
+            <span>Package</span>
+            <strong>{lootboxCounts.package}</strong>
+          </label>
+          <label className={`lootbox-toolbar-toggle${includeCollections ? " is-active" : ""}`}>
+            <input
+              type="checkbox"
+              checked={includeCollections}
+              onChange={(event) => setIncludeCollections(event.target.checked)}
+            />
+            <span>Collection</span>
+            <strong>{lootboxCounts.collection}</strong>
+          </label>
+        </div>
+      </article>
 
       <div className="lootbox-case-grid" role="list" aria-label="Available lootboxes">
         {loading ? (
           Array.from({ length: 6 }).map((_, index) => (
             <article key={index} className="lootbox-case-card lootbox-case-card-skeleton" />
           ))
+        ) : visibleLootboxes.length === 0 ? (
+          <p className="muted lootbox-empty-state">
+            {searchQuery.length > 0
+              ? "No lootboxes match this search."
+              : "No lootboxes match the current type filters."}
+          </p>
         ) : (
-          lootboxes.map((lootbox) => {
+          visibleLootboxes.map((lootbox) => {
             const isSelected = selectedLootboxId === lootbox.id;
             const isHovered = hoveredLootboxId === lootbox.id;
 
@@ -690,8 +793,8 @@ const Lootbox = () => {
       </div>
 
       {showDetailsModal && selectedLootbox && (
-        <div className="lootbox-modal-backdrop" onClick={() => setShowDetailsModal(false)}>
-          <article className="lootbox-modal lootbox-detail-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={() => setShowDetailsModal(false)}>
+          <article className="lootbox-modal lootbox-detail-modal ui-modal modal-sm" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>{selectedLootbox.name}</h3>
               <div className="compact-row">
@@ -788,8 +891,8 @@ const Lootbox = () => {
       )}
 
       {showDropPoolModal && selectedLootbox && (
-        <div className="lootbox-modal-backdrop" onClick={() => setShowDropPoolModal(false)}>
-          <article className="lootbox-modal lootbox-droppool-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={() => setShowDropPoolModal(false)}>
+          <article className="lootbox-modal lootbox-droppool-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>{selectedLootbox.name} Drop Pool</h3>
               <button type="button" className="button-secondary" onClick={() => setShowDropPoolModal(false)}>
@@ -798,6 +901,16 @@ const Lootbox = () => {
             </div>
 
             <div className="lootbox-drop-table">
+              {selectedDetail?.oddsModel?.buckets?.length ? (
+                <p className="lootbox-odds-note muted">
+                  Odds Model: CS2 official bucket odds (normalized by available tiers in this case):
+                  {" "}
+                  {selectedDetail.oddsModel.buckets
+                    .map((bucket) => `${bucket.bucket} ${bucket.normalizedChance.toFixed(4)}%`)
+                    .join(" | ")}
+                </p>
+              ) : null}
+
               <div className="lootbox-drop-table-head">
                 <span>Item</span>
                 <button type="button" className="lootbox-sort-button" onClick={() => handleDropSort("name")}>
@@ -806,6 +919,7 @@ const Lootbox = () => {
                 <button type="button" className="lootbox-sort-button" onClick={() => handleDropSort("rarity")}>
                   Rarity {dropSortKey === "rarity" ? (dropSortDirection === "asc" ? "▲" : "▼") : ""}
                 </button>
+                <span className="lootbox-drop-chance-head">Drop Chance</span>
                 <button
                   type="button"
                   className="lootbox-sort-button"
@@ -834,8 +948,11 @@ const Lootbox = () => {
                         <div className="lootbox-card-image-fallback">?</div>
                       )}
                     </div>
-                    <strong className="lootbox-drop-name">{item.name}</strong>
+                    <div>
+                      <strong className="lootbox-drop-name">{item.name}</strong>
+                    </div>
                     <span className={`lootbox-rarity-chip ${rarityClass(item.rarity)}`}>{item.rarity}</span>
+                    <span className="lootbox-drop-rate">{formatDropRate(item.dropRatePercent)}</span>
                     <span className="lootbox-market-price">{formatMarketPrice(item.marketPrice)}</span>
                   </button>
                 ))}
@@ -846,8 +963,8 @@ const Lootbox = () => {
       )}
 
       {showReelModal && reelResult && (
-        <div className="lootbox-modal-backdrop" onClick={handleCloseReel}>
-          <article className="lootbox-modal lootbox-reel-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={handleCloseReel}>
+          <article className="lootbox-modal lootbox-reel-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>Opening {reelResult.lootbox.name}</h3>
               <div className="compact-row">
@@ -903,8 +1020,8 @@ const Lootbox = () => {
               ) : (
                 <>
                   <span className="muted">{reelSpinning ? "Rolling..." : "Ready"}</span>
-                  <strong ref={reelNameRef as React.RefObject<HTMLElement>} className="common">...</strong>
-                  <span ref={reelRarityChipRef} className="lootbox-rarity-chip common">common</span>
+                  <strong ref={reelNameRef as React.RefObject<HTMLElement>} className="consumer">...</strong>
+                  <span ref={reelRarityChipRef} className="lootbox-rarity-chip consumer">consumer</span>
                 </>
               )}
             </div>

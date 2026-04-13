@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 import { useAppContext } from "../context/AppContext";
+import { useNotifications } from "../context/NotificationContext";
 
 type ForumPost = {
 	id: number;
@@ -10,6 +11,7 @@ type ForumPost = {
 
 const Forum = () => {
 	const { user } = useAppContext();
+	const { notifySuccess, notifyWarning } = useNotifications();
 	const [message, setMessage] = useState("");
 	const [posts, setPosts] = useState<ForumPost[]>([
 		{
@@ -26,6 +28,7 @@ const Forum = () => {
 		event.preventDefault();
 		const trimmed = message.trim();
 		if (!trimmed) {
+			notifyWarning("Write something before posting.", "Forum");
 			return;
 		}
 
@@ -39,16 +42,17 @@ const Forum = () => {
 			...current,
 		]);
 		setMessage("");
+		notifySuccess("Forum post published.", "Forum");
 	};
 
 	return (
-		<section>
+		<section className="ui-section forum-page">
 			<div className="page-title-row">
 				<h1>Forum</h1>
 				<span className="muted">{postCount} posts</span>
 			</div>
 
-			<form className="card inline-form" onSubmit={submitPost}>
+			<form className="card ui-surface inline-form" onSubmit={submitPost}>
 				<input
 					value={message}
 					onChange={(event) => setMessage(event.target.value)}
@@ -60,7 +64,7 @@ const Forum = () => {
 
 			<div className="list-stack">
 				{posts.map((post) => (
-					<article key={post.id} className="card">
+					<article key={post.id} className="card ui-surface">
 						<h3>{post.author}</h3>
 						<p>{post.text}</p>
 						<p className="muted">{post.createdAt}</p>

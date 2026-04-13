@@ -66,3 +66,8 @@ dist/
 out/
 coverage/
 .test-cache/
+
+# Local-only CS2 import assets (temporary)
+backend/CS2_DB/
+backend/src/scripts/cs2Import.ts
+backend/src/scripts/import-cs2.ts

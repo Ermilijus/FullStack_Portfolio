@@ -12,6 +12,7 @@
 		"prisma:migrate:dev": "prisma migrate dev",
 		"prisma:reset": "node ./node_modules/prisma/build/index.js db push --force-reset && node ./node_modules/prisma/build/index.js generate",
 		"db:seed": "tsx src/scripts/seed.ts",
+		"db:import:cs2": "tsx src/scripts/import-cs2.ts",
 		"clean": "powershell -NoProfile -Command \"if (Test-Path 'prisma\\dev.db') { Remove-Item -Force 'prisma\\dev.db' }; if (Test-Path 'prisma\\dev.db-journal') { Remove-Item -Force 'prisma\\dev.db-journal' }; if (Test-Path 'node_modules') { Remove-Item -Force -Recurse 'node_modules' }; if (Test-Path 'dist') { Remove-Item -Force -Recurse 'dist' }; if (Test-Path 'prisma\\migrations') { Remove-Item -Force -Recurse 'prisma\\migrations' }; exit 0\""
 	},
 	"dependencies": {

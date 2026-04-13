@@ -26,7 +26,7 @@ const Home = () => {
   }, [token]);
 
   return (
-    <section className="home-page">
+    <section className="home-page ui-section">
       <BannerCarousel banners={banners} />
       <TrendingPosts />
       <RecentDrops />

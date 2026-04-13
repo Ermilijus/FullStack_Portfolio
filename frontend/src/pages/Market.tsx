@@ -2,11 +2,17 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   createMarketListing,
+  fetchMarketCatalogItems,
+  fetchMarketCatalogTypes,
+  fetchMarketCatalogWeapons,
   fetchMarketListingDetail,
   fetchMarketListings,
   fetchMyMarketListings,
   fetchProfileInventory,
   removeMarketListing,
+  type MarketCatalogItem,
+  type MarketCatalogTypeCard,
+  type MarketCatalogWeaponCard,
   type MarketListing,
   type MarketSortBy,
   purchaseMarketListing,
@@ -14,11 +20,12 @@ import {
 } from "../api";
 import { resolveAvatarUrl } from "../avatar";
 import { useAppContext } from "../context/AppContext";
+import { useNotifications } from "../context/NotificationContext";
 
 const PAGE_SIZE_OPTIONS: Array<10 | 15 | 30 | 50> = [10, 15, 30, 50];
-const WEAR_OPTIONS = ["Factory New", "Minimal Wear", "Field Tested", "Worn"];
+const WEAR_OPTIONS = ["Factory New", "Minimal Wear", "Field-Tested", "Well-Worn", "Battle-Scarred"];
 
-type UnitWear = "Factory New" | "Minimal Wear" | "Field Tested" | "Worn";
+type UnitWear = "Factory New" | "Minimal Wear" | "Field-Tested" | "Well-Worn" | "Battle-Scarred";
 
 type InventoryUnit = {
   unitId: string;
@@ -46,6 +53,7 @@ const formatUsd = (value: number) => {
 
 const clampFloatDisplay = (value: number) => value.toFixed(6);
 
+
 const seededUnitValue = (seed: string) => {
   let hash = 2166136261;
   for (let index = 0; index < seed.length; index += 1) {
@@ -64,10 +72,13 @@ const deriveUnitWear = (floatValue: number): UnitWear => {
     return "Minimal Wear";
   }
   if (floatValue <= 0.38) {
-    return "Field Tested";
+    return "Field-Tested";
+  }
+  if (floatValue <= 0.45) {
+    return "Well-Worn";
   }
 
-  return "Worn";
+  return "Battle-Scarred";
 };
 
 const deriveInventoryUnit = (entry: ProfileInventoryItem, index: number): InventoryUnit => {
@@ -97,6 +108,7 @@ const toggleArrayValue = (values: string[], value: string) => {
 
 const Market = () => {
   const { token } = useAppContext();
+  const { notifyError, notifySuccess } = useNotifications();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearchFromUrl = searchParams.get("itemName") ?? "";
@@ -104,7 +116,11 @@ const Market = () => {
   const [loadedFromLootbox] = useState(Boolean(initialSearchFromUrl || initialItemIdFromUrl));
 
   const [search, setSearch] = useState(initialSearchFromUrl);
-  const [requestedItemId] = useState(initialItemIdFromUrl);
+  const [catalogSearch, setCatalogSearch] = useState(initialSearchFromUrl);
+  const [selectedCatalogType, setSelectedCatalogType] = useState("");
+  const [selectedCatalogWeaponName, setSelectedCatalogWeaponName] = useState("");
+  const [selectedCatalogItemId, setSelectedCatalogItemId] = useState(initialItemIdFromUrl);
+  const [selectedCatalogItemName, setSelectedCatalogItemName] = useState(initialSearchFromUrl);
   const [sortBy, setSortBy] = useState<MarketSortBy>("new");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [pageSize, setPageSize] = useState<10 | 15 | 30 | 50>(15);
@@ -130,6 +146,11 @@ const Market = () => {
   const [quantityMin, setQuantityMin] = useState(0);
 
   const [listings, setListings] = useState<MarketListing[]>([]);
+  const [catalogTypeCards, setCatalogTypeCards] = useState<MarketCatalogTypeCard[]>([]);
+  const [catalogWeaponCards, setCatalogWeaponCards] = useState<MarketCatalogWeaponCard[]>([]);
+  const [catalogItems, setCatalogItems] = useState<MarketCatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [filterOptions, setFilterOptions] = useState<{
     lootboxes: Array<{ id: string; name: string }>;
     types: string[];
@@ -185,6 +206,58 @@ const Market = () => {
     () => inventoryItems.reduce((sum, entry) => sum + Math.max(0, entry.quantity - entry.availableQuantity), 0),
     [inventoryItems],
   );
+  const hasBypassFilters = Boolean(
+    lootboxFilter
+    || wearFilters.length > 0
+    || typeFilters.length > 0
+    || rarityFilters.length > 0
+    || quantityMin > 0,
+  );
+  const isListingsMode = selectedCatalogItemId.length > 0 || hasBypassFilters;
+  const isCatalogItemsStage = !isListingsMode && selectedCatalogType.length > 0 && selectedCatalogWeaponName.length > 0;
+  const isCatalogWeaponsStage = !isListingsMode && selectedCatalogType.length > 0 && selectedCatalogWeaponName.length === 0;
+  const isCatalogTypesStage = !isListingsMode && selectedCatalogType.length === 0;
+
+  const filteredCatalogItems = useMemo(() => {
+    const query = catalogSearch.trim().toLowerCase();
+    const filtered = query
+      ? catalogItems.filter((item) => {
+        const classification = item.classification ?? "";
+        return (
+          item.name.toLowerCase().includes(query)
+          || item.rarity.toLowerCase().includes(query)
+          || classification.toLowerCase().includes(query)
+        );
+      })
+      : catalogItems;
+
+    return [...filtered].sort((left, right) => {
+      const countDiff = right.activeListingCount - left.activeListingCount;
+      if (countDiff !== 0) {
+        return countDiff;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+  }, [catalogItems, catalogSearch]);
+
+  const filteredCatalogTypeCards = useMemo(() => {
+    const query = catalogSearch.trim().toLowerCase();
+    if (!query) {
+      return catalogTypeCards;
+    }
+
+    return catalogTypeCards.filter((card) => card.type.toLowerCase().includes(query));
+  }, [catalogSearch, catalogTypeCards]);
+
+  const filteredCatalogWeaponCards = useMemo(() => {
+    const query = catalogSearch.trim().toLowerCase();
+    if (!query) {
+      return catalogWeaponCards;
+    }
+
+    return catalogWeaponCards.filter((card) => card.weaponName.toLowerCase().includes(query));
+  }, [catalogSearch, catalogWeaponCards]);
 
   const toolbarRef = useRef<HTMLElement | null>(null);
   const [toolbarFloating, setToolbarFloating] = useState(false);
@@ -236,7 +309,179 @@ const Market = () => {
   }, [mySearch]);
 
   useEffect(() => {
+    if (actionMessage) {
+      notifySuccess(actionMessage, "Market");
+    }
+  }, [actionMessage, notifySuccess]);
+
+  useEffect(() => {
+    if (error) {
+      notifyError(error, "Market");
+    }
+  }, [error, notifyError]);
+
+  useEffect(() => {
+    if (catalogError) {
+      notifyError(catalogError, "Market");
+    }
+  }, [catalogError, notifyError]);
+
+  useEffect(() => {
+    if (myListingsError) {
+      notifyError(myListingsError, "Market");
+    }
+  }, [myListingsError, notifyError]);
+
+  useEffect(() => {
+    if (inventoryError) {
+      notifyError(inventoryError, "Inventory");
+    }
+  }, [inventoryError, notifyError]);
+
+  useEffect(() => {
+    if (sellFeedback) {
+      notifyError(sellFeedback, "Market");
+    }
+  }, [notifyError, sellFeedback]);
+
+  useEffect(() => {
     if (!token) {
+      return;
+    }
+
+    let cancelled = false;
+    setCatalogLoading(true);
+    setCatalogError(null);
+
+    void fetchMarketCatalogTypes(token)
+      .then((types) => {
+        if (cancelled) {
+          return;
+        }
+
+        setCatalogTypeCards(types);
+        setFilterOptions((current) => ({
+          ...current,
+          types: [...new Set(types.map((entry) => entry.type))].sort((a, b) => a.localeCompare(b)),
+        }));
+      })
+      .catch((fetchError) => {
+        if (cancelled) {
+          return;
+        }
+
+        setCatalogError(fetchError instanceof Error ? fetchError.message : "Failed to load market catalog types");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey, token]);
+
+  useEffect(() => {
+    if (!token || !selectedCatalogType) {
+      if (!selectedCatalogType) {
+        setCatalogWeaponCards([]);
+        setCatalogItems([]);
+      }
+      return;
+    }
+
+    if (selectedCatalogWeaponName) {
+      return;
+    }
+
+    let cancelled = false;
+    setCatalogLoading(true);
+    setCatalogError(null);
+
+    void fetchMarketCatalogWeapons(token, selectedCatalogType)
+      .then((weapons) => {
+        if (cancelled) {
+          return;
+        }
+
+        setCatalogWeaponCards(weapons);
+      })
+      .catch((fetchError) => {
+        if (cancelled) {
+          return;
+        }
+
+        setCatalogError(fetchError instanceof Error ? fetchError.message : "Failed to load market weapon catalog");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCatalogType, selectedCatalogWeaponName, token]);
+
+  useEffect(() => {
+    if (!token || !selectedCatalogType || !selectedCatalogWeaponName) {
+      if (!selectedCatalogWeaponName) {
+        setCatalogItems([]);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    setCatalogLoading(true);
+    setCatalogError(null);
+
+    void fetchMarketCatalogItems(token, selectedCatalogType, selectedCatalogWeaponName)
+      .then((items) => {
+        if (cancelled) {
+          return;
+        }
+
+        setCatalogItems(items);
+        setFilterOptions((current) => ({
+          ...current,
+          rarities: [...new Set(items.map((item) => item.rarity))].sort((a, b) => a.localeCompare(b)),
+        }));
+      })
+      .catch((fetchError) => {
+        if (cancelled) {
+          return;
+        }
+
+        setCatalogError(fetchError instanceof Error ? fetchError.message : "Failed to load market catalog items");
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCatalogType, selectedCatalogWeaponName, token]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    if (!isListingsMode) {
+      setListings([]);
+      setPagination((current) => ({
+        ...current,
+        page: 1,
+        totalItems: 0,
+        totalPages: 1,
+      }));
+      setLoading(false);
       return;
     }
 
@@ -255,7 +500,7 @@ const Market = () => {
       type: typeFilters,
       rarity: rarityFilters,
       quantityMin: quantityMin > 0 ? quantityMin : undefined,
-      itemId: requestedItemId || undefined,
+      itemId: selectedCatalogItemId || undefined,
     })
       .then((data) => {
         if (cancelled) {
@@ -293,8 +538,9 @@ const Market = () => {
     quantityMin,
     rarityFilters,
     refreshKey,
-    requestedItemId,
+    isListingsMode,
     searchQuery,
+    selectedCatalogItemId,
     sortBy,
     sortDir,
     token,
@@ -403,6 +649,48 @@ const Market = () => {
     setRarityFilters([]);
     setQuantityMin(0);
     setPage(1);
+  };
+
+  const resetToCatalog = () => {
+    setSelectedCatalogItemId("");
+    setSelectedCatalogItemName("");
+    setSelectedCatalogType("");
+    setSelectedCatalogWeaponName("");
+    setCatalogSearch("");
+    setSearch("");
+    clearAdvancedFilters();
+    setError(null);
+  };
+
+  const handleBack = () => {
+    if (selectedCatalogItemId) {
+      setSelectedCatalogItemId("");
+      setSelectedCatalogItemName("");
+      setSearch("");
+      setPage(1);
+      setError(null);
+      return;
+    }
+
+    if (selectedCatalogType) {
+      if (selectedCatalogWeaponName) {
+        setSelectedCatalogWeaponName("");
+        setSelectedCatalogItemId("");
+        setSelectedCatalogItemName("");
+        setCatalogSearch("");
+        setPage(1);
+        setError(null);
+        return;
+      }
+
+      setSelectedCatalogType("");
+      setCatalogSearch("");
+      setPage(1);
+      setError(null);
+      return;
+    }
+
+    resetToCatalog();
   };
 
   const openInventoryModal = async () => {
@@ -520,20 +808,138 @@ const Market = () => {
     }
   };
 
-  const visibleCountLabel = loading ? "Loading..." : `${pagination.totalItems} active listings`;
+  const visibleCountLabel = isCatalogTypesStage
+    ? catalogLoading
+      ? "Loading categories..."
+      : `${filteredCatalogTypeCards.length} categories`
+    : isCatalogWeaponsStage
+      ? catalogLoading
+        ? "Loading weapons..."
+        : `${filteredCatalogWeaponCards.length} weapon families`
+      : isCatalogItemsStage
+      ? catalogLoading
+        ? "Loading catalog..."
+        : `${filteredCatalogItems.length} item definitions`
+      : loading
+        ? "Loading..."
+        : `${pagination.totalItems} active listings`;
+  const listingContextLabel = selectedCatalogItemName
+    ? `Showing listings for ${selectedCatalogItemName}.`
+    : typeFilters.length === 1
+      ? `Showing listings for ${typeFilters[0]}.`
+      : "Showing listings for your current filters.";
+
+  const atCatalogBreadcrumb = isCatalogTypesStage;
+  const atTypeBreadcrumb = isCatalogWeaponsStage;
+  const atWeaponBreadcrumb = isCatalogItemsStage;
+  const atSkinBreadcrumb = isListingsMode && selectedCatalogItemId.length > 0;
+  const atListingsBreadcrumb = isListingsMode && selectedCatalogItemId.length === 0;
 
   return (
-    <section className="market-page">
+    <section className="market-page ui-section">
       <div className="page-title-row">
         <h1>Market</h1>
         <span className="muted">{visibleCountLabel}</span>
       </div>
-      {loadedFromLootbox && <p className="muted">Filtered from Lootbox drop pool selection.</p>}
-      {actionMessage && <p className="muted">{actionMessage}</p>}
-      {error && <p className="error">{error}</p>}
 
-      <article ref={toolbarRef} className={`card market-toolbar${toolbarFloating ? " is-floating" : ""}`}>
+      <nav className="market-breadcrumbs" aria-label="Market navigation breadcrumbs">
+        <button
+          type="button"
+          className={`market-breadcrumb${atCatalogBreadcrumb ? " is-active" : ""}`}
+          onClick={resetToCatalog}
+        >
+          Catalog
+        </button>
+
+        {selectedCatalogType && (
+          <>
+            <span className="market-breadcrumb-separator">/</span>
+            <button
+              type="button"
+              className={`market-breadcrumb${atTypeBreadcrumb ? " is-active" : ""}`}
+              onClick={() => {
+                setSelectedCatalogWeaponName("");
+                setSelectedCatalogItemId("");
+                setSelectedCatalogItemName("");
+                setCatalogSearch("");
+                setSearch("");
+                setPage(1);
+                setError(null);
+              }}
+            >
+              {selectedCatalogType}
+            </button>
+          </>
+        )}
+
+        {selectedCatalogWeaponName && (
+          <>
+            <span className="market-breadcrumb-separator">/</span>
+            <button
+              type="button"
+              className={`market-breadcrumb${atWeaponBreadcrumb ? " is-active" : ""}`}
+              onClick={() => {
+                setSelectedCatalogItemId("");
+                setSelectedCatalogItemName("");
+                setCatalogSearch("");
+                setSearch("");
+                setPage(1);
+                setError(null);
+              }}
+            >
+              {selectedCatalogWeaponName}
+            </button>
+          </>
+        )}
+
+        {selectedCatalogItemName && (
+          <>
+            <span className="market-breadcrumb-separator">/</span>
+            <button
+              type="button"
+              className={`market-breadcrumb${atSkinBreadcrumb ? " is-active" : ""}`}
+              onClick={() => {
+                setSelectedCatalogItemId("");
+                setSearch("");
+                setPage(1);
+                setError(null);
+              }}
+            >
+              {selectedCatalogItemName}
+            </button>
+          </>
+        )}
+
+        {isListingsMode && (
+          <>
+            <span className="market-breadcrumb-separator">/</span>
+            <span className={`market-breadcrumb market-breadcrumb-text${atListingsBreadcrumb ? " is-active" : ""}`}>
+              Listings
+            </span>
+          </>
+        )}
+      </nav>
+
+      {loadedFromLootbox && isListingsMode && <p className="muted">Filtered from Lootbox drop pool selection.</p>}
+      {isCatalogItemsStage && <p className="muted">Category: {selectedCatalogType}</p>}
+      {isCatalogWeaponsStage && <p className="muted">Category: {selectedCatalogType}</p>}
+      {isCatalogItemsStage && <p className="muted">Weapon: {selectedCatalogWeaponName}</p>}
+      {isListingsMode && <p className="muted">{listingContextLabel}</p>}
+
+      <article
+        ref={toolbarRef}
+        className={`card market-toolbar${toolbarFloating ? " is-floating" : ""}${!isListingsMode ? " is-catalog" : ""}`}
+      >
         <div className="market-toolbar-left">
+          {!isCatalogTypesStage && (
+            <button
+              type="button"
+              className="market-listings-button market-back-button"
+              onClick={handleBack}
+            >
+              Back
+            </button>
+          )}
           <button
             type="button"
             className="market-listings-button"
@@ -550,141 +956,284 @@ const Market = () => {
 
           <div className="market-search-wrap">
             <input
-              value={search}
+              value={isListingsMode ? search : catalogSearch}
               onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
+                if (isListingsMode) {
+                  setSearch(event.target.value);
+                  setPage(1);
+                } else {
+                  setCatalogSearch(event.target.value);
+                }
               }}
-              placeholder="Search"
+              placeholder={isCatalogTypesStage ? "Search categories" : isCatalogWeaponsStage ? "Search weapons" : isCatalogItemsStage ? "Search skins" : "Search listings"}
             />
           </div>
         </div>
 
-        <div className="market-sort-wrap">
-          <label className="market-inline-label">
-            <span>Sort by</span>
-            <select
-              value={sortBy}
-              onChange={(event) => {
-                setSortBy(event.target.value as MarketSortBy);
-                setPage(1);
-              }}
-            >
-              <option value="new">New</option>
-              <option value="price">Price</option>
-              <option value="wear">Wear</option>
-              <option value="float">Float</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setSortDir((current) => (current === "asc" ? "desc" : "asc"));
-              setPage(1);
-            }}
-          >
-            {sortDir === "asc" ? "Ascending" : "Descending"}
-          </button>
-        </div>
+        {isListingsMode ? (
+          <>
+            <div className="market-sort-wrap">
+              <label className="market-inline-label">
+                <span>Sort by</span>
+                <select
+                  value={sortBy}
+                  onChange={(event) => {
+                    setSortBy(event.target.value as MarketSortBy);
+                    setPage(1);
+                  }}
+                >
+                  <option value="new">New</option>
+                  <option value="price">Price</option>
+                  <option value="wear">Wear</option>
+                  <option value="float">Float</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+                  setPage(1);
+                }}
+              >
+                {sortDir === "asc" ? "Ascending" : "Descending"}
+              </button>
+            </div>
 
-        <div className="market-toolbar-right">
-          <label className="market-inline-label">
-            <span>Show</span>
-            <select
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value) as 10 | 15 | 30 | 50);
-                setPage(1);
-              }}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={() => setShowFiltersModal(true)}>
-            Filters
-          </button>
-        </div>
+            <div className="market-toolbar-right">
+              <label className="market-inline-label">
+                <span>Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value) as 10 | 15 | 30 | 50);
+                    setPage(1);
+                  }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" onClick={() => setShowFiltersModal(true)}>
+                Filters
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="market-sort-wrap" />
+            <div className="market-toolbar-right">
+              <button type="button" onClick={() => setShowFiltersModal(true)}>
+                Filters
+              </button>
+            </div>
+          </>
+        )}
       </article>
 
-      <div className="market-list-grid">
-        {loading ? (
-          <p className="muted">Loading listings...</p>
-        ) : listings.length === 0 ? (
-          <p className="muted">No listings match your current filters.</p>
-        ) : (
-          listings.map((listing) => (
-            <button
-              type="button"
-              key={listing.id}
-              className={`market-listing-card card ${rarityClass(listing.item.rarity)}`}
-              onClick={() => {
-                setSelectedListingId(listing.id);
-                setDetailsActionMode("buy");
-                setActionMessage(null);
-              }}
-            >
-              <div className="market-listing-image-wrap">
-                {listing.item.image ? (
-                  <img src={listing.item.image} alt={listing.item.name} className="market-listing-image" />
-                ) : (
-                  <div className="market-listing-image-fallback">?</div>
-                )}
-              </div>
-              <div className="market-listing-main">
-                <div className="market-item-title-row">
-                  <h3 className={`market-item-name ${rarityClass(listing.item.rarity)}`}>{listing.item.name}</h3>
-                  <span className={`lootbox-rarity-chip ${rarityClass(listing.item.rarity)}`}>{listing.item.rarity}</span>
+      {isCatalogTypesStage ? (
+        <>
+          <div className="market-catalog-grid market-catalog-grid-types">
+            {catalogLoading ? (
+              <p className="muted">Loading categories...</p>
+            ) : filteredCatalogTypeCards.length === 0 ? (
+              <p className="muted">No categories match this search.</p>
+            ) : (
+              filteredCatalogTypeCards.map((card) => (
+                <button
+                  type="button"
+                  key={card.type}
+                  className="market-catalog-card card market-type-card"
+                  onClick={() => {
+                    setSelectedCatalogType(card.type);
+                    setSelectedCatalogItemId("");
+                    setSelectedCatalogItemName("");
+                    setCatalogSearch("");
+                    setSearch("");
+                    setPage(1);
+                    setError(null);
+                  }}
+                >
+                  <div className="market-catalog-image-wrap">
+                    {card.image ? (
+                      <img src={card.image} alt={card.type} className="market-listing-image" />
+                    ) : (
+                      <div className="market-listing-image-fallback">?</div>
+                    )}
+                  </div>
+                  <div className="market-catalog-main">
+                    <h3 className="market-item-name">{card.type}</h3>
+                    <div className="market-catalog-bottom-row">
+                      <span className="muted">{card.itemCount} weapons</span>
+                      <span className="muted">{card.listingCount} listings</span>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </>
+      ) : isCatalogWeaponsStage ? (
+        <div className="market-catalog-grid market-catalog-grid-types">
+          {catalogLoading ? (
+            <p className="muted">Loading weapons...</p>
+          ) : filteredCatalogWeaponCards.length === 0 ? (
+            <p className="muted">No weapons match this search.</p>
+          ) : (
+            filteredCatalogWeaponCards.map((card) => (
+              <button
+                type="button"
+                key={card.weaponName}
+                className="market-catalog-card card market-type-card"
+                onClick={() => {
+                  setSelectedCatalogWeaponName(card.weaponName);
+                  setCatalogSearch("");
+                  setSearch("");
+                  setPage(1);
+                  setError(null);
+                }}
+              >
+                <div className="market-catalog-image-wrap">
+                  {card.image ? (
+                    <img src={card.image} alt={card.weaponName} className="market-listing-image" />
+                  ) : (
+                    <div className="market-listing-image-fallback">?</div>
+                  )}
                 </div>
-                <div className="market-item-meta-grid">
-                  <p className="market-item-meta muted market-info-line market-info-line-alt">
-                    <span className="market-meta-label">Wear</span>
-                    <span>{listing.item.wear}</span>
-                  </p>
-                  <p className="market-item-meta muted market-info-line">
-                    <span className="market-meta-label">Float</span>
-                    <span>{clampFloatDisplay(listing.item.float)}</span>
-                  </p>
-                </div>
-                <div className="market-listing-bottom-row market-info-line market-info-line-alt">
-                  <p className="market-item-price">{formatUsd(listing.listedPriceUsd)}</p>
-                  <div className="market-seller-chip" title={`Seller: ${listing.seller.username}`}>
-                    <img
-                      src={resolveAvatarUrl(listing.seller.avatar)}
-                      alt={listing.seller.username}
-                      className="market-seller-avatar"
-                    />
-                    <span className="market-seller-name">Seller: {listing.seller.username}</span>
+                <div className="market-catalog-main">
+                  <h3 className="market-item-name">{card.weaponName}</h3>
+                  <div className="market-catalog-bottom-row">
+                    <span className="muted">{card.itemCount} skins</span>
+                    <span className="muted">{card.listingCount} listings</span>
                   </div>
                 </div>
-              </div>
-            </button>
-          ))
-        )}
-      </div>
+              </button>
+            ))
+          )}
+        </div>
+      ) : isCatalogItemsStage ? (
+        <div className="market-catalog-grid">
+          {catalogLoading ? (
+            <p className="muted">Loading catalog...</p>
+          ) : filteredCatalogItems.length === 0 ? (
+            <p className="muted">No item definitions match this category search.</p>
+          ) : (
+            filteredCatalogItems.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className={`market-catalog-card card ${rarityClass(item.rarity)}`}
+                onClick={() => {
+                  setSelectedCatalogItemId(item.id);
+                  setSelectedCatalogItemName(item.name);
+                  setSearch("");
+                  setPage(1);
+                  setError(null);
+                }}
+              >
+                <div className="market-catalog-image-wrap">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="market-listing-image" />
+                  ) : (
+                    <div className="market-listing-image-fallback">?</div>
+                  )}
+                </div>
+                <div className="market-catalog-main">
+                  <h3 className={`market-item-name ${rarityClass(item.rarity)}`}>{item.name}</h3>
+                  <p className="market-item-meta muted market-info-line market-info-line-alt">
+                    <span className="market-meta-label">Class</span>
+                    <span>{item.classification ?? "Unknown"}</span>
+                  </p>
+                  <div className="market-catalog-bottom-row">
+                    <span className={`lootbox-rarity-chip ${rarityClass(item.rarity)}`}>{item.rarity}</span>
+                    <span className="muted">{item.activeListingCount} listings</span>
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="market-list-grid">
+            {loading ? (
+              <p className="muted">Loading listings...</p>
+            ) : listings.length === 0 ? (
+              <p className="muted">No listings found for this selection right now.</p>
+            ) : (
+              listings.map((listing, index) => (
+                <button
+                  type="button"
+                  key={`${listing.id}:${index}`}
+                  className={`market-listing-card card ${rarityClass(listing.item.rarity)}`}
+                  onClick={() => {
+                    setSelectedListingId(listing.id);
+                    setDetailsActionMode("buy");
+                    setActionMessage(null);
+                  }}
+                >
+                  <div className="market-listing-image-wrap">
+                    {listing.item.image ? (
+                      <img src={listing.item.image} alt={listing.item.name} className="market-listing-image" />
+                    ) : (
+                      <div className="market-listing-image-fallback">?</div>
+                    )}
+                  </div>
+                  <div className="market-listing-main">
+                    <div className="market-item-title-row">
+                      <h3 className={`market-item-name ${rarityClass(listing.item.rarity)}`}>{listing.item.name}</h3>
+                      <span className={`lootbox-rarity-chip ${rarityClass(listing.item.rarity)}`}>{listing.item.rarity}</span>
+                    </div>
+                    <div className="market-item-meta-grid">
+                      <p className="market-item-meta muted market-info-line market-info-line-alt">
+                        <span className="market-meta-label">Wear</span>
+                        <span>{listing.item.wear}</span>
+                      </p>
+                      <p className="market-item-meta muted market-info-line">
+                        <span className="market-meta-label">Float</span>
+                        <span>{clampFloatDisplay(listing.item.float)}</span>
+                      </p>
+                    </div>
+                    <div className="market-listing-bottom-row market-info-line market-info-line-alt">
+                      <p className="market-item-price">{formatUsd(listing.listedPriceUsd)}</p>
+                      <div className="market-seller-chip" title={`Seller: ${listing.seller.username}`}>
+                        <img
+                          src={resolveAvatarUrl(listing.seller.avatar)}
+                          alt={listing.seller.username}
+                          className="market-seller-avatar"
+                        />
+                        <span className="market-seller-name">Seller: {listing.seller.username}</span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
 
-      <div className="market-pagination-row">
-        <button type="button" disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-          Prev
-        </button>
-        <span className="muted">
-          Page {pagination.page} of {pagination.totalPages}
-        </span>
-        <button
-          type="button"
-          disabled={pagination.page >= pagination.totalPages}
-          onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
-        >
-          Next
-        </button>
-      </div>
+          <div className="market-pagination-row">
+            <button type="button" disabled={pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
+              Prev
+            </button>
+            <span className="muted">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={pagination.page >= pagination.totalPages}
+              onClick={() => setPage((current) => Math.min(pagination.totalPages, current + 1))}
+            >
+              Next
+            </button>
+          </div>
+        </>
+      )}
 
       {showFiltersModal && (
-        <div className="lootbox-modal-backdrop" onClick={() => setShowFiltersModal(false)}>
-          <article className="lootbox-modal market-filters-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={() => setShowFiltersModal(false)}>
+          <article className="lootbox-modal market-filters-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h2>Advanced Filters</h2>
               <button type="button" onClick={() => setShowFiltersModal(false)}>
@@ -798,8 +1347,8 @@ const Market = () => {
       )}
 
       {showListingsModal && (
-        <div className="lootbox-modal-backdrop" onClick={() => setShowListingsModal(false)}>
-          <article className="lootbox-modal market-listings-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={() => setShowListingsModal(false)}>
+          <article className="lootbox-modal market-listings-modal ui-modal modal-xl" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <button type="button" className="profile-inventory-launch" onClick={openInventoryModal}>
                 Inventory
@@ -871,7 +1420,6 @@ const Market = () => {
               </div>
             </article>
 
-            {myListingsError && <p className="error">{myListingsError}</p>}
             <div className="market-listings-scroll">
               {myListingsLoading ? (
                 <p className="muted">Loading your listings...</p>
@@ -879,10 +1427,10 @@ const Market = () => {
                 <p className="muted">You have no items currently listed on the market.</p>
               ) : (
                 <div className="market-list-grid market-list-grid-single">
-                  {myListings.map((listing) => (
+                  {myListings.map((listing, index) => (
                     <button
                       type="button"
-                      key={listing.id}
+                      key={`${listing.id}:${index}`}
                       className={`market-listing-card card ${rarityClass(listing.item.rarity)}`}
                       onClick={() => {
                         setSelectedListingId(listing.id);
@@ -950,8 +1498,8 @@ const Market = () => {
       )}
 
       {selectedListingId && (
-        <div className="lootbox-modal-backdrop" onClick={closeDetailsModal}>
-          <article className="lootbox-modal market-detail-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="lootbox-modal-backdrop ui-modal-backdrop" onClick={closeDetailsModal}>
+          <article className="lootbox-modal market-detail-modal ui-modal modal-md" onClick={(event) => event.stopPropagation()}>
             {detailsLoading || !selectedListing ? (
               <p className="muted">Loading listing details...</p>
             ) : (
@@ -1052,8 +1600,8 @@ const Market = () => {
       )}
 
       {showInventoryModal && (
-        <div className="profile-inventory-backdrop" onClick={() => setShowInventoryModal(false)}>
-          <article className="profile-inventory-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="profile-inventory-backdrop ui-modal-backdrop" onClick={() => setShowInventoryModal(false)}>
+          <article className="profile-inventory-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>Your Inventory</h3>
               <button type="button" className="button-secondary" onClick={() => setShowInventoryModal(false)}>
@@ -1061,7 +1609,6 @@ const Market = () => {
               </button>
             </div>
 
-            {inventoryError && <p className="error-text">{inventoryError}</p>}
             {inventoryLoading ? (
               <p className="muted">Loading inventory...</p>
             ) : inventoryUnits.length === 0 ? (
@@ -1076,7 +1623,7 @@ const Market = () => {
                     <button
                       type="button"
                       key={unit.unitId}
-                      className={`profile-inventory-slot ${unit.source.item.rarity.trim().toLowerCase()}`}
+                      className={`profile-inventory-slot ${rarityClass(unit.source.item.rarity)}`}
                       onClick={() => handleSellModalOpen(unit)}
                     >
                       <span className="profile-slot-wear">{unit.wear}</span>
@@ -1098,8 +1645,8 @@ const Market = () => {
       )}
 
       {showSellModal && sellTargetItem && (
-        <div className="profile-inventory-backdrop" onClick={() => setShowSellModal(false)}>
-          <article className="profile-inventory-modal profile-account-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="profile-inventory-backdrop ui-modal-backdrop" onClick={() => setShowSellModal(false)}>
+          <article className="profile-inventory-modal profile-account-modal ui-modal modal-md" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>List Item on Market</h3>
               <button type="button" className="button-secondary" onClick={() => setShowSellModal(false)}>
@@ -1127,7 +1674,6 @@ const Market = () => {
                   {sellSubmitting ? "Creating..." : "Create Listing"}
                 </button>
               </div>
-              {sellFeedback && <p className="error-text">{sellFeedback}</p>}
             </article>
           </article>
         </div>

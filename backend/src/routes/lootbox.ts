@@ -3,26 +3,157 @@ import { FastifyPluginAsync } from "fastify";
 const OPEN_RATE_WINDOW_MS = 60_000;
 const OPEN_RATE_MAX_REQUESTS = 8;
 
-const pickWeightedIndex = (weights: number[]) => {
-  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-  const rollValue = Math.random() * totalWeight;
+type LootboxOddsEntry = {
+  itemId: string;
+  quantity: number;
+  weight: number;
+  item: {
+    rarity: string;
+    weaponType?: string | null;
+  };
+};
 
-  let cursor = rollValue;
-  let selectedIndex = 0;
-  for (let index = 0; index < weights.length; index += 1) {
-    cursor -= weights[index];
-    if (cursor <= 0) {
-      selectedIndex = index;
-      break;
+type OddsBucket = "mil-spec" | "restricted" | "classified" | "covert" | "gold";
+
+type BucketChanceRow = {
+  bucket: OddsBucket;
+  baseChance: number;
+  normalizedChance: number;
+  poolSize: number;
+};
+
+type Cs2OddsProfile<T extends LootboxOddsEntry> = {
+  poolByBucket: Record<OddsBucket, T[]>;
+  availableBuckets: BucketChanceRow[];
+  totalBaseChance: number;
+  perItemChanceByItemId: Map<string, number>;
+};
+
+const CS2_CASE_BUCKET_ODDS: Array<{ bucket: OddsBucket; chance: number }> = [
+  { bucket: "mil-spec", chance: 79.92 },
+  { bucket: "restricted", chance: 15.98 },
+  { bucket: "classified", chance: 3.2 },
+  { bucket: "covert", chance: 0.64 },
+  { bucket: "gold", chance: 0.26 },
+];
+
+const normalizeRarity = (rarity: string) => rarity.trim().toLowerCase();
+
+const bucketForEntry = (entry: LootboxOddsEntry): OddsBucket => {
+  const rarity = normalizeRarity(entry.item.rarity);
+
+  if (entry.item.weaponType === "Knife" || entry.item.weaponType === "Gloves" || rarity === "contraband") {
+    return "gold";
+  }
+  if (rarity === "restricted") {
+    return "restricted";
+  }
+  if (rarity === "classified") {
+    return "classified";
+  }
+  if (rarity === "covert") {
+    return "covert";
+  }
+
+  // Consumer/Industrial legacy items are treated as Mil-Spec bucket for case-open odds.
+  return "mil-spec";
+};
+
+const buildCs2OddsProfile = <T extends LootboxOddsEntry>(entries: T[]): Cs2OddsProfile<T> => {
+  const poolByBucket: Record<OddsBucket, T[]> = {
+    "mil-spec": [],
+    restricted: [],
+    classified: [],
+    covert: [],
+    gold: [],
+  };
+
+  for (const entry of entries) {
+    poolByBucket[bucketForEntry(entry)].push(entry);
+  }
+
+  const availableBucketsBase = CS2_CASE_BUCKET_ODDS.filter(({ bucket }) => poolByBucket[bucket].length > 0);
+  const totalBaseChance = availableBucketsBase.reduce((sum, row) => sum + row.chance, 0);
+  const availableBuckets: BucketChanceRow[] = availableBucketsBase.map((row) => ({
+    bucket: row.bucket,
+    baseChance: row.chance,
+    normalizedChance: totalBaseChance > 0 ? (row.chance / totalBaseChance) * 100 : 0,
+    poolSize: poolByBucket[row.bucket].length,
+  }));
+
+  const perItemChanceByItemId = new Map<string, number>();
+  for (const row of availableBuckets) {
+    const perItemChance = row.poolSize > 0 ? row.normalizedChance / row.poolSize : 0;
+    for (const entry of poolByBucket[row.bucket]) {
+      perItemChanceByItemId.set(entry.itemId, perItemChance);
     }
   }
 
   return {
-    selectedIndex,
-    rollValue,
-    totalWeight,
+    poolByBucket,
+    availableBuckets,
+    totalBaseChance,
+    perItemChanceByItemId,
   };
 };
+
+const pickFromCs2OddsProfile = <T extends LootboxOddsEntry>(profile: Cs2OddsProfile<T>) => {
+  if (profile.availableBuckets.length === 0 || profile.totalBaseChance <= 0) {
+    return null;
+  }
+
+  const bucketRollValue = Math.random() * profile.totalBaseChance;
+  let cursor = bucketRollValue;
+  let selectedBucket = profile.availableBuckets[profile.availableBuckets.length - 1].bucket;
+
+  for (const row of profile.availableBuckets) {
+    cursor -= row.baseChance;
+    if (cursor <= 0) {
+      selectedBucket = row.bucket;
+      break;
+    }
+  }
+
+  const selectedBucketPool = profile.poolByBucket[selectedBucket];
+  const itemRollIndex = Math.floor(Math.random() * selectedBucketPool.length);
+  const selectedEntry = selectedBucketPool[itemRollIndex];
+
+  return {
+    selectedEntry,
+    trace: {
+      selectedBucket,
+      bucketRollValue,
+      totalChance: profile.totalBaseChance,
+      itemRollIndex,
+      bucketPoolSize: selectedBucketPool.length,
+      availableBuckets: profile.availableBuckets.map((row) => ({
+        bucket: row.bucket,
+        chance: row.baseChance,
+        normalizedChance: row.normalizedChance,
+        poolSize: row.poolSize,
+      })),
+    },
+  };
+};
+
+const pickEntryByCs2Odds = <T extends LootboxOddsEntry>(entries: T[]) => {
+  const profile = buildCs2OddsProfile(entries);
+  return pickFromCs2OddsProfile(profile);
+};
+
+const pickCs2Meta = (item: {
+  isCs2: boolean;
+  sourceDefIndex: number | null;
+  sourcePaintIndex: number | null;
+  sourceQuality: string | null;
+  sourcePhase: string | null;
+}) => ({
+  isCs2: item.isCs2,
+  sourceDefIndex: item.sourceDefIndex,
+  sourcePaintIndex: item.sourcePaintIndex,
+  sourceQuality: item.sourceQuality,
+  sourcePhase: item.sourcePhase,
+});
 
 export const lootboxRoutes: FastifyPluginAsync = async (app) => {
   app.get("/catalog", { onRequest: [app.authenticate] }, async (request) => {
@@ -33,6 +164,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
         include: {
           items: {
             orderBy: [{ weight: "desc" }, { createdAt: "asc" }],
+            take: 5,
             include: {
               item: {
                 select: {
@@ -41,8 +173,19 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
                   image: true,
                   rarity: true,
                   realWorldValue: true,
+                  isCs2: true,
+                  sourceDefIndex: true,
+                  sourcePaintIndex: true,
+                  sourceQuality: true,
+                  sourcePhase: true,
+                  weaponType: true,
                 },
               },
+            },
+          },
+          _count: {
+            select: {
+              items: true,
             },
           },
         },
@@ -57,7 +200,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
 
     return {
       lootboxes: lootboxes.map((lootbox) => {
-        const previewItems = lootbox.items.slice(0, 5).map((entry) => ({
+        const previewItems = lootbox.items.map((entry) => ({
           id: entry.item.id,
           name: entry.item.name,
           image: entry.item.image,
@@ -65,6 +208,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
           marketPrice: Number(entry.item.realWorldValue),
           weight: entry.weight,
           quantity: entry.quantity,
+          cs2: pickCs2Meta(entry.item),
         }));
 
         return {
@@ -76,7 +220,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
           spendCurrency: lootbox.spendCurrency,
           isFavorited: favoriteSet.has(lootbox.id),
           previewItems,
-          totalDropPoolItems: lootbox.items.length,
+          totalDropPoolItems: lootbox._count.items,
         };
       }),
     };
@@ -136,6 +280,12 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
                   description: true,
                   rarity: true,
                   realWorldValue: true,
+                  isCs2: true,
+                  sourceDefIndex: true,
+                  sourcePaintIndex: true,
+                  sourceQuality: true,
+                  sourcePhase: true,
+                  weaponType: true,
                 },
               },
             },
@@ -182,9 +332,15 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
         name: true,
         image: true,
         rarity: true,
+        isCs2: true,
+        sourceDefIndex: true,
+        sourcePaintIndex: true,
+        sourceQuality: true,
+        sourcePhase: true,
       },
     });
     const recentItemMap = new Map(recentItems.map((item) => [item.id, item]));
+    const oddsProfile = buildCs2OddsProfile(lootbox.items);
 
     return {
       lootbox: {
@@ -203,8 +359,19 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
           rarity: entry.item.rarity,
           marketPrice: Number(entry.item.realWorldValue),
           weight: entry.weight,
+          dropRatePercent: Number((oddsProfile.perItemChanceByItemId.get(entry.itemId) ?? 0).toFixed(6)),
           quantity: entry.quantity,
+          cs2: pickCs2Meta(entry.item),
         })),
+        oddsModel: {
+          mode: "cs2-official-bucket-odds",
+          buckets: oddsProfile.availableBuckets.map((row) => ({
+            bucket: row.bucket,
+            baseChance: Number(row.baseChance.toFixed(4)),
+            normalizedChance: Number(row.normalizedChance.toFixed(6)),
+            poolSize: row.poolSize,
+          })),
+        },
         stats: {
           totalOpens,
           userOpens,
@@ -225,6 +392,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
                 name: item.name,
                 image: item.image,
                 rarity: item.rarity,
+                cs2: pickCs2Meta(item),
               },
             };
           })
@@ -232,6 +400,120 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
       },
     };
   });
+
+  app.get<{ Params: { id: string }; Querystring: { samples?: string } }>(
+    "/:id/simulate-odds",
+    { onRequest: [app.authenticate, app.authorizeAdmin] },
+    async (request, reply) => {
+      const { id } = request.params;
+      if (!id?.trim()) {
+        return reply.status(400).send({ error: "Lootbox id is required" });
+      }
+
+      const rawSamples = Number.parseInt(request.query.samples ?? "100000", 10);
+      const samples = Number.isFinite(rawSamples)
+        ? Math.max(1000, Math.min(rawSamples, 1_000_000))
+        : 100000;
+
+      const lootbox = await app.prisma.lootbox.findFirst({
+        where: { id, isActive: true },
+        include: {
+          items: {
+            include: {
+              item: {
+                select: {
+                  id: true,
+                  name: true,
+                  rarity: true,
+                  weaponType: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!lootbox || lootbox.items.length === 0) {
+        return reply.status(404).send({ error: "Lootbox not found or unavailable" });
+      }
+
+      const profile = buildCs2OddsProfile(lootbox.items);
+      if (profile.availableBuckets.length === 0) {
+        return reply.status(422).send({ error: "This lootbox has no eligible items for CS2 odds selection." });
+      }
+
+      const bucketHits = new Map<OddsBucket, number>();
+      const rarityHits = new Map<string, number>();
+      const itemHits = new Map<string, number>();
+
+      for (let index = 0; index < samples; index += 1) {
+        const pick = pickFromCs2OddsProfile(profile);
+        if (!pick) {
+          return reply.status(422).send({ error: "This lootbox has no eligible items for CS2 odds selection." });
+        }
+
+        const bucketKey = pick.trace.selectedBucket;
+        bucketHits.set(bucketKey, (bucketHits.get(bucketKey) ?? 0) + 1);
+
+        const rarityKey = pick.selectedEntry.item.rarity;
+        rarityHits.set(rarityKey, (rarityHits.get(rarityKey) ?? 0) + 1);
+
+        const itemKey = pick.selectedEntry.itemId;
+        itemHits.set(itemKey, (itemHits.get(itemKey) ?? 0) + 1);
+      }
+
+      const itemMetaById = new Map(
+        lootbox.items.map((entry) => [entry.itemId, {
+          name: entry.item.name,
+          rarity: entry.item.rarity,
+        }]),
+      );
+
+      return {
+        simulation: {
+          lootboxId: lootbox.id,
+          lootboxName: lootbox.name,
+          mode: "cs2-official-bucket-odds",
+          samples,
+          expectedBuckets: profile.availableBuckets.map((row) => ({
+            bucket: row.bucket,
+            baseChance: Number(row.baseChance.toFixed(4)),
+            normalizedChance: Number(row.normalizedChance.toFixed(6)),
+            poolSize: row.poolSize,
+          })),
+          observedBuckets: profile.availableBuckets.map((row) => {
+            const hits = bucketHits.get(row.bucket) ?? 0;
+            return {
+              bucket: row.bucket,
+              hits,
+              observedChance: Number(((hits / samples) * 100).toFixed(6)),
+            };
+          }),
+          observedRarities: [...rarityHits.entries()]
+            .map(([rarity, hits]) => ({
+              rarity,
+              hits,
+              observedChance: Number(((hits / samples) * 100).toFixed(6)),
+            }))
+            .sort((a, b) => b.hits - a.hits),
+          observedItemsTop20: [...itemHits.entries()]
+            .map(([itemId, hits]) => {
+              const meta = itemMetaById.get(itemId);
+              return {
+                itemId,
+                name: meta?.name ?? itemId,
+                rarity: meta?.rarity ?? "Unknown",
+                hits,
+                observedChance: Number(((hits / samples) * 100).toFixed(6)),
+                expectedChance: Number((profile.perItemChanceByItemId.get(itemId) ?? 0).toFixed(6)),
+              };
+            })
+            .sort((a, b) => b.hits - a.hits)
+            .slice(0, 20),
+        },
+      };
+    },
+  );
 
   app.get("/history", { onRequest: [app.authenticate] }, async (request) => {
     const rolls = await app.prisma.lootboxRoll.findMany({
@@ -259,6 +541,11 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
         image: true,
         rarity: true,
         realWorldValue: true,
+        isCs2: true,
+        sourceDefIndex: true,
+        sourcePaintIndex: true,
+        sourceQuality: true,
+        sourcePhase: true,
       },
     });
     const itemMap = new Map(items.map((item) => [item.id, item]));
@@ -283,6 +570,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
               image: item.image,
               rarity: item.rarity,
               marketPrice: Number(item.realWorldValue),
+              cs2: pickCs2Meta(item),
             },
           };
         })
@@ -345,6 +633,12 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
                   description: true,
                   rarity: true,
                   realWorldValue: true,
+                  isCs2: true,
+                  sourceDefIndex: true,
+                  sourcePaintIndex: true,
+                  sourceQuality: true,
+                  sourcePhase: true,
+                  weaponType: true,
                 },
               },
             },
@@ -376,6 +670,12 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
                 description: true,
                 rarity: true,
                 realWorldValue: true,
+                isCs2: true,
+                sourceDefIndex: true,
+                sourcePaintIndex: true,
+                sourceQuality: true,
+                sourcePhase: true,
+                weaponType: true,
               },
             }),
             app.prisma.userItem.findUnique({
@@ -418,6 +718,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
                 description: item.description,
                 rarity: item.rarity,
                 marketPrice: Number(item.realWorldValue),
+                cs2: pickCs2Meta(item),
               },
               inventory: {
                 quantity: inventory?.quantity ?? 0,
@@ -436,6 +737,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
                 rarity: entry.item.rarity,
                 weight: entry.weight,
                 marketPrice: Number(entry.item.realWorldValue),
+                cs2: pickCs2Meta(entry.item),
               })),
             },
           };
@@ -496,9 +798,12 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
           return { failure: "INSUFFICIENT_FUNDS" as const };
         }
 
-        const weights = lootbox.items.map((entry) => Math.max(1, entry.weight));
-        const pick = pickWeightedIndex(weights);
-        const selectedEntry = lootbox.items[pick.selectedIndex];
+        const pick = pickEntryByCs2Odds(lootbox.items);
+        if (!pick) {
+          return { failure: "NO_ELIGIBLE_ITEMS" as const };
+        }
+
+        const selectedEntry = pick.selectedEntry;
         const now = new Date();
 
         const roll = await tx.lootboxRoll.create({
@@ -509,14 +814,21 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
             costPaid: lootbox.cost,
             requestId,
             serverSeed: Math.random().toString(36).slice(2),
-            rollValue: pick.rollValue,
-            totalWeight: pick.totalWeight,
-            dropTrace: JSON.stringify(
-              lootbox.items.map((entry) => ({
+            rollValue: pick.trace.bucketRollValue,
+            totalWeight: Math.round(pick.trace.totalChance * 100),
+            dropTrace: JSON.stringify({
+              mode: "cs2-official-bucket-odds",
+              selectedBucket: pick.trace.selectedBucket,
+              bucketPoolSize: pick.trace.bucketPoolSize,
+              itemRollIndex: pick.trace.itemRollIndex,
+              availableBuckets: pick.trace.availableBuckets,
+              pool: lootbox.items.map((entry) => ({
                 itemId: entry.itemId,
-                weight: entry.weight,
+                rarity: entry.item.rarity,
+                weaponType: entry.item.weaponType,
+                legacyWeight: entry.weight,
               })),
-            ),
+            }),
             createdAt: now,
           },
         });
@@ -601,6 +913,10 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
         return reply.status(402).send({ error: "Insufficient balance to open this lootbox." });
       }
 
+      if (draw.failure === "NO_ELIGIBLE_ITEMS") {
+        return reply.status(422).send({ error: "This lootbox has no eligible items for CS2 odds selection." });
+      }
+
       if (draw.failure) {
         return reply.status(404).send({ error: "User account no longer exists" });
       }
@@ -627,6 +943,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
             description: draw.item.description,
             rarity: draw.item.rarity,
             marketPrice: Number(draw.item.realWorldValue),
+            cs2: pickCs2Meta(draw.item),
           },
           inventory: draw.inventory,
           trace: {
@@ -641,6 +958,7 @@ export const lootboxRoutes: FastifyPluginAsync = async (app) => {
             rarity: entry.item.rarity,
             weight: entry.weight,
             marketPrice: Number(entry.item.realWorldValue),
+              cs2: pickCs2Meta(entry.item),
           })),
         },
       };

@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useNotifications } from "../context/NotificationContext";
 
 type TradeOffer = {
 	id: number;
@@ -7,6 +8,7 @@ type TradeOffer = {
 };
 
 const Trade = () => {
+	const { notifySuccess, notifyWarning } = useNotifications();
 	const [offering, setOffering] = useState("");
 	const [requesting, setRequesting] = useState("");
 	const [offers, setOffers] = useState<TradeOffer[]>([]);
@@ -15,6 +17,7 @@ const Trade = () => {
 		event.preventDefault();
 
 		if (!offering.trim() || !requesting.trim()) {
+			notifyWarning("Fill in both sides of the trade offer.", "Trade");
 			return;
 		}
 
@@ -29,16 +32,17 @@ const Trade = () => {
 
 		setOffering("");
 		setRequesting("");
+		notifySuccess("Trade offer created.", "Trade");
 	};
 
 	return (
-		<section>
+		<section className="ui-section trade-page">
 			<div className="page-title-row">
 				<h1>Trade</h1>
 				<span className="muted">Open offers: {offers.length}</span>
 			</div>
 
-			<form className="card inline-form" onSubmit={createOffer}>
+			<form className="card ui-surface inline-form" onSubmit={createOffer}>
 				<input
 					value={offering}
 					onChange={(event) => setOffering(event.target.value)}
@@ -57,7 +61,7 @@ const Trade = () => {
 					<p className="muted">No active offers yet.</p>
 				) : (
 					offers.map((offer) => (
-						<article key={offer.id} className="card">
+						<article key={offer.id} className="card ui-surface">
 							<h3>{offer.offering}</h3>
 							<p>Requested: {offer.requesting}</p>
 						</article>

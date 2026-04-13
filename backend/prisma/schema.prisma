@@ -73,6 +73,15 @@ model Item {
     rarity         String // "Common", "Rare", "Epic", "Legendary"
     realWorldValue Decimal // USD or local currency for inventory estimate
 
+    // CS2 source metadata
+    isCs2            Boolean @default(false)
+    sourceItemKey    String? @unique
+    sourceDefIndex   Int?
+    sourcePaintIndex Int?
+    sourceQuality    String?
+    sourcePhase      String?
+    sourceRarityId   Int?
+
     // Weapon-specific (nullable for non-weapon items)
     weaponType String?
     wearMin    Float? // 0.0 - min condition
@@ -84,6 +93,10 @@ model Item {
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+
+    @@index([isCs2, rarity])
+    @@index([weaponType, rarity])
+    @@index([sourceDefIndex, sourcePaintIndex])
 }
 
 model UserItem {
@@ -114,6 +127,11 @@ model Lootbox {
     description   String?
     cost          Int // Cost in imaginary currency
     spendCurrency WalletType @default(currency)
+
+    // CS2 source metadata
+    isCs2               Boolean @default(false)
+    sourceContainerKey  String? @unique
+    sourceAssociatedDef Int?
 
     items     LootboxItem[]
     rolls     LootboxRoll[]

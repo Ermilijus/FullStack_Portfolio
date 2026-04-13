@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAppContext } from "../context/AppContext";
 import { API_BASE_URL } from "../api";
+import { useAppContext } from "../context/AppContext";
+import { useNotifications } from "../context/NotificationContext";
 import "../styles/login.css";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { setToken, setUser } = useAppContext();
+  const { notifyError } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -41,9 +41,9 @@ const Login = () => {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed";
       if (message.toLowerCase().includes("failed to fetch")) {
-        setError(`Cannot reach API at ${API_BASE_URL}. Check backend runtime and CORS origin settings.`);
+        notifyError(`Cannot reach API at ${API_BASE_URL}. Check backend runtime and CORS origin settings.`, "Login");
       } else {
-        setError(message);
+        notifyError(message, "Login");
       }
     } finally {
       setLoading(false);
@@ -72,8 +72,7 @@ const Login = () => {
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>
-      {error && <p className="error">{error}</p>}
-      
+
       <div className="test-accounts">
         <h3>Test Accounts:</h3>
         <p>user1@example.com / pass123</p>

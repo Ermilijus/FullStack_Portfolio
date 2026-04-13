@@ -1,8 +1,12 @@
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import AppHeader from "./AppHeader";
+import NotificationViewport from "./NotificationViewport";
 
 const AppLayout = () => {
+  const location = useLocation();
+  const isMarketRoute = location.pathname === "/market";
+
   useEffect(() => {
     const root = document.documentElement;
     const header = document.querySelector<HTMLElement>(".app-header");
@@ -33,7 +37,8 @@ const AppLayout = () => {
   return (
     <div className="app-shell">
       <AppHeader />
-      <main className="page-shell">
+      <NotificationViewport />
+      <main className={`page-shell ui-page${isMarketRoute ? " page-shell-market ui-page-market" : ""}`}>
         <Outlet />
       </main>
     </div>

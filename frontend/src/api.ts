@@ -18,6 +18,14 @@
 
 export const API_BASE_URL = getApiBaseUrl();
 
+export type Cs2ItemMeta = {
+  isCs2: boolean;
+  sourceDefIndex: number | null;
+  sourcePaintIndex: number | null;
+  sourceQuality: string | null;
+  sourcePhase: string | null;
+};
+
 export type Project = {
   id: string;
   name: string;
@@ -46,7 +54,9 @@ export type LootboxPreviewItem = {
   rarity: string;
   marketPrice?: number;
   weight: number;
+  dropRatePercent?: number;
   quantity: number;
+  cs2?: Cs2ItemMeta;
 };
 
 export type LootboxCatalogItem = {
@@ -69,7 +79,9 @@ export type LootboxDetailItem = {
   rarity: string;
   marketPrice: number;
   weight: number;
+  dropRatePercent?: number;
   quantity: number;
+  cs2?: Cs2ItemMeta;
 };
 
 export type LootboxDetail = {
@@ -81,6 +93,15 @@ export type LootboxDetail = {
   spendCurrency: "currency" | "specialCurrency";
   isFavorited: boolean;
   items: LootboxDetailItem[];
+  oddsModel?: {
+    mode: string;
+    buckets: Array<{
+      bucket: string;
+      baseChance: number;
+      normalizedChance: number;
+      poolSize: number;
+    }>;
+  };
   stats: {
     totalOpens: number;
     userOpens: number;
@@ -94,6 +115,7 @@ export type LootboxDetail = {
       name: string;
       image: string | null;
       rarity: string;
+      cs2?: Cs2ItemMeta;
     };
   }>;
 };
@@ -119,6 +141,7 @@ export type LootboxOpenResult = {
     description: string | null;
     rarity: string;
     marketPrice: number;
+    cs2?: Cs2ItemMeta;
   };
   inventory: {
     quantity: number;
@@ -137,6 +160,7 @@ export type LootboxOpenResult = {
     rarity: string;
     weight: number;
     marketPrice: number;
+    cs2?: Cs2ItemMeta;
   }>;
 };
 
@@ -150,6 +174,41 @@ type LootboxDetailResponse = {
 
 type LootboxOpenResponse = {
   result: LootboxOpenResult;
+};
+
+export type LootboxOddsSimulation = {
+  lootboxId: string;
+  lootboxName: string;
+  mode: string;
+  samples: number;
+  expectedBuckets: Array<{
+    bucket: string;
+    baseChance: number;
+    normalizedChance: number;
+    poolSize: number;
+  }>;
+  observedBuckets: Array<{
+    bucket: string;
+    hits: number;
+    observedChance: number;
+  }>;
+  observedRarities: Array<{
+    rarity: string;
+    hits: number;
+    observedChance: number;
+  }>;
+  observedItemsTop20: Array<{
+    itemId: string;
+    name: string;
+    rarity: string;
+    hits: number;
+    observedChance: number;
+    expectedChance: number;
+  }>;
+};
+
+type LootboxOddsSimulationResponse = {
+  simulation: LootboxOddsSimulation;
 };
 
 type LootboxFavoritesResponse = {
@@ -254,6 +313,25 @@ export const openLootbox = async (
   return data.result;
 };
 
+export const fetchLootboxOddsSimulation = async (
+  token: string,
+  id: string,
+  samples: number,
+): Promise<LootboxOddsSimulation> => {
+  const params = new URLSearchParams({ samples: String(samples) });
+  const response = await fetch(`${API_BASE_URL}/api/lootbox/${id}/simulate-odds?${params.toString()}`, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({ error: "Failed to run odds simulation" }));
+    throw new Error(typeof payload.error === "string" ? payload.error : "Failed to run odds simulation");
+  }
+
+  const data = (await response.json()) as LootboxOddsSimulationResponse;
+  return data.simulation;
+};
+
 export type ProfileInventoryItem = {
   id: string;
   quantity: number;
@@ -290,6 +368,48 @@ export const fetchProfileInventory = async (token: string): Promise<ProfileInven
 export type MarketSortBy = "new" | "price" | "wear" | "float";
 export type MarketSortDir = "asc" | "desc";
 
+export type MarketCatalogItem = {
+  id: string;
+  name: string;
+  image: string | null;
+  rarity: string;
+  classification: string | null;
+  activeListingCount: number;
+  cs2?: Cs2ItemMeta;
+};
+
+export type MarketCatalogTypeCard = {
+  type: string;
+  image: string | null;
+  listingCount: number;
+  itemCount: number;
+};
+
+export type MarketCatalogWeaponCard = {
+  weaponName: string;
+  image: string | null;
+  listingCount: number;
+  itemCount: number;
+};
+
+type MarketCatalogTypesResponse = {
+  mode: "types";
+  types: MarketCatalogTypeCard[];
+};
+
+type MarketCatalogItemsResponse = {
+  mode: "items";
+  itemType: string;
+  weaponName: string;
+  items: MarketCatalogItem[];
+};
+
+type MarketCatalogWeaponsResponse = {
+  mode: "weapons";
+  itemType: string;
+  weapons: MarketCatalogWeaponCard[];
+};
+
 export type MarketListing = {
   id: string;
   createdAt: string;
@@ -309,7 +429,8 @@ export type MarketListing = {
     type: string | null;
     basePriceUsd: number;
     float: number;
-    wear: "Factory New" | "Minimal Wear" | "Field Tested" | "Worn";
+    wear: "Factory New" | "Minimal Wear" | "Field-Tested" | "Well-Worn" | "Battle-Scarred";
+    cs2?: Cs2ItemMeta;
   };
   activeLootboxes: Array<{
     id: string;
@@ -322,7 +443,7 @@ export type MarketFiltersResponse = {
     id: string;
     name: string;
   }>;
-  wear: Array<"Factory New" | "Minimal Wear" | "Field Tested" | "Worn">;
+  wear: Array<"Factory New" | "Minimal Wear" | "Field-Tested" | "Well-Worn" | "Battle-Scarred">;
   types: string[];
   rarities: string[];
 };
@@ -357,7 +478,7 @@ export type MarketListingsParams = {
   type?: string[];
   quantityMin?: number;
   rarity?: string[];
-  itemId?: string;
+  itemId?: string; // Global item definition identifier
 };
 
 type MarketListingDetailResponse = {
@@ -454,6 +575,54 @@ export const fetchMarketListings = async (
   }
 
   return (await response.json()) as MarketListingsResponse;
+};
+
+export const fetchMarketCatalogTypes = async (token: string): Promise<MarketCatalogTypeCard[]> => {
+  const response = await fetch(`${API_BASE_URL}/api/market/catalog`, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load market catalog types");
+  }
+
+  const data = (await response.json()) as MarketCatalogTypesResponse;
+  return data.types;
+};
+
+export const fetchMarketCatalogWeapons = async (
+  token: string,
+  itemType: string,
+): Promise<MarketCatalogWeaponCard[]> => {
+  const params = new URLSearchParams({ itemType });
+  const response = await fetch(`${API_BASE_URL}/api/market/catalog?${params.toString()}`, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load market weapon catalog");
+  }
+
+  const data = (await response.json()) as MarketCatalogWeaponsResponse;
+  return data.weapons;
+};
+
+export const fetchMarketCatalogItems = async (
+  token: string,
+  itemType: string,
+  weaponName: string,
+): Promise<MarketCatalogItem[]> => {
+  const params = new URLSearchParams({ itemType, weaponName });
+  const response = await fetch(`${API_BASE_URL}/api/market/catalog?${params.toString()}`, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load market catalog items");
+  }
+
+  const data = (await response.json()) as MarketCatalogItemsResponse;
+  return data.items;
 };
 
 export const fetchMyMarketListings = async (

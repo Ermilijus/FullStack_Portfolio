@@ -18,6 +18,7 @@ import {
 } from "../api";
 import { resolveAvatarUrl } from "../avatar";
 import { useAppContext } from "../context/AppContext";
+import { useNotifications } from "../context/NotificationContext";
 
 type FavoriteLootbox = {
   id: string;
@@ -35,7 +36,7 @@ const AVATAR_ALLOWED_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "i
 const isVideoAvatar = (value: string | null | undefined) => Boolean(value && value.includes("video/webm"));
 const toAvatarLinkInput = (value: string | null | undefined) => (value && value.startsWith("data:") ? "" : value ?? "");
 
-type UnitWear = "Factory New" | "Minimal Wear" | "Field Tested" | "Worn";
+type UnitWear = "Factory New" | "Minimal Wear" | "Field-Tested" | "Well-Worn" | "Battle-Scarred";
 
 type InventoryUnit = {
   unitId: string;
@@ -64,10 +65,13 @@ const deriveUnitWear = (floatValue: number): UnitWear => {
     return "Minimal Wear";
   }
   if (floatValue <= 0.38) {
-    return "Field Tested";
+    return "Field-Tested";
+  }
+  if (floatValue <= 0.45) {
+    return "Well-Worn";
   }
 
-  return "Worn";
+  return "Battle-Scarred";
 };
 
 const deriveInventoryUnit = (entry: ProfileInventoryItem, index: number): InventoryUnit => {
@@ -87,8 +91,11 @@ const deriveInventoryUnit = (entry: ProfileInventoryItem, index: number): Invent
   };
 };
 
+const rarityClass = (rarity: string) => rarity.trim().toLowerCase();
+
 const Profile = () => {
   const { user, setUser, token } = useAppContext();
+  const { notifyError, notifyInfo, notifySuccess } = useNotifications();
   const [profile, setProfile] = useState<ProfileSummary | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -143,6 +150,93 @@ const Profile = () => {
     () => inventoryItems.reduce((sum, entry) => sum + Math.max(0, entry.quantity - entry.availableQuantity), 0),
     [inventoryItems],
   );
+
+  useEffect(() => {
+    if (profileError) {
+      notifyError(profileError, "Profile");
+    }
+  }, [notifyError, profileError]);
+
+  useEffect(() => {
+    if (favoritesError) {
+      notifyError(favoritesError, "Profile");
+    }
+  }, [favoritesError, notifyError]);
+
+  useEffect(() => {
+    if (forumError) {
+      notifyError(forumError, "Profile");
+    }
+  }, [forumError, notifyError]);
+
+  useEffect(() => {
+    if (inventoryError) {
+      notifyError(inventoryError, "Inventory");
+    }
+  }, [inventoryError, notifyError]);
+
+  useEffect(() => {
+    if (sellFeedback) {
+      notifyError(sellFeedback, "Profile");
+    }
+  }, [notifyError, sellFeedback]);
+
+  useEffect(() => {
+    if (!usernameFeedback) {
+      return;
+    }
+
+    if (usernameFeedback === "Username updated.") {
+      notifySuccess(usernameFeedback, "Profile");
+      return;
+    }
+
+    notifyError(usernameFeedback, "Profile");
+  }, [notifyError, notifySuccess, usernameFeedback]);
+
+  useEffect(() => {
+    if (!emailFeedback) {
+      return;
+    }
+
+    if (emailFeedback === "Email updated.") {
+      notifySuccess(emailFeedback, "Profile");
+      return;
+    }
+
+    notifyError(emailFeedback, "Profile");
+  }, [emailFeedback, notifyError, notifySuccess]);
+
+  useEffect(() => {
+    if (!passwordFeedback) {
+      return;
+    }
+
+    if (passwordFeedback === "Password updated.") {
+      notifySuccess(passwordFeedback, "Profile");
+      return;
+    }
+
+    notifyError(passwordFeedback, "Profile");
+  }, [notifyError, notifySuccess, passwordFeedback]);
+
+  useEffect(() => {
+    if (!avatarFeedback) {
+      return;
+    }
+
+    if (avatarFeedback === "Avatar updated.") {
+      notifySuccess(avatarFeedback, "Profile");
+      return;
+    }
+
+    if (avatarFeedback === "File ready. Save to apply this avatar.") {
+      notifyInfo(avatarFeedback, "Profile");
+      return;
+    }
+
+    notifyError(avatarFeedback, "Profile");
+  }, [avatarFeedback, notifyError, notifyInfo, notifySuccess]);
 
   useEffect(() => {
     if (!token) {
@@ -490,6 +584,7 @@ const Profile = () => {
       setSellTargetItem(null);
       setSellFeedback(null);
       setInventoryError(null);
+      notifySuccess("Listing created from inventory.", "Profile");
     } catch (error) {
       setSellFeedback(error instanceof Error ? error.message : "Failed to create market listing.");
     } finally {
@@ -501,15 +596,13 @@ const Profile = () => {
   const resolvedAvatarValue = resolveAvatarUrl(avatarValue);
 
   return (
-    <section className="profile-page">
+    <section className="profile-page ui-section">
       <div className="page-title-row">
         <h1>Profile</h1>
         <button type="button" className="profile-inventory-launch" onClick={openInventoryModal}>
           Open Inventory
         </button>
       </div>
-
-      {profileError && <p className="error-text">{profileError}</p>}
 
       <article className="card profile-identity-card">
         <div className="profile-identity-main">
@@ -555,7 +648,6 @@ const Profile = () => {
           <h3>Favorite Lootboxes</h3>
           <span className="muted">Quick access</span>
         </div>
-        {favoritesError && <p className="error-text">{favoritesError}</p>}
         {favoritesLoading ? (
           <p className="muted">Loading favorites...</p>
         ) : favoriteLootboxes.length === 0 ? (
@@ -583,7 +675,6 @@ const Profile = () => {
           <span className="muted">Posts and comments</span>
         </div>
 
-        {forumError && <p className="error-text">{forumError}</p>}
         {forumLoading ? (
           <p className="muted">Loading forum activity...</p>
         ) : (
@@ -624,8 +715,8 @@ const Profile = () => {
       </article>
 
       {showAccountModal && (
-        <div className="profile-inventory-backdrop" onClick={() => setShowAccountModal(false)}>
-          <article className="profile-inventory-modal profile-account-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="profile-inventory-backdrop ui-modal-backdrop" onClick={() => setShowAccountModal(false)}>
+          <article className="profile-inventory-modal profile-account-modal ui-modal modal-md" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>Account Management</h3>
               <button type="button" className="button-secondary" onClick={() => setShowAccountModal(false)}>
@@ -647,7 +738,6 @@ const Profile = () => {
                     {usernameSaving ? "Saving..." : "Update Username"}
                   </button>
                 </div>
-                {usernameFeedback && <p className={usernameFeedback === "Username updated." ? "muted" : "error-text"}>{usernameFeedback}</p>}
               </article>
 
               <article className="profile-account-block">
@@ -669,7 +759,6 @@ const Profile = () => {
                     {emailSaving ? "Updating..." : "Update Email"}
                   </button>
                 </div>
-                {emailFeedback && <p className={emailFeedback === "Email updated." ? "muted" : "error-text"}>{emailFeedback}</p>}
               </article>
 
               <article className="profile-account-block">
@@ -691,7 +780,6 @@ const Profile = () => {
                     {passwordSaving ? "Updating..." : "Update Password"}
                   </button>
                 </div>
-                {passwordFeedback && <p className={passwordFeedback === "Password updated." ? "muted" : "error-text"}>{passwordFeedback}</p>}
               </article>
             </div>
           </article>
@@ -699,8 +787,8 @@ const Profile = () => {
       )}
 
       {showAvatarModal && (
-        <div className="profile-inventory-backdrop" onClick={() => setShowAvatarModal(false)}>
-          <article className="profile-inventory-modal profile-account-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="profile-inventory-backdrop ui-modal-backdrop" onClick={() => setShowAvatarModal(false)}>
+          <article className="profile-inventory-modal profile-account-modal ui-modal modal-md" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>Change Avatar</h3>
               <button type="button" className="button-secondary" onClick={() => setShowAvatarModal(false)}>
@@ -732,15 +820,14 @@ const Profile = () => {
                   {avatarSaving ? "Saving..." : "Save Avatar"}
                 </button>
               </div>
-              {avatarFeedback && <p className={avatarFeedback === "Avatar updated." ? "muted" : "error-text"}>{avatarFeedback}</p>}
             </article>
           </article>
         </div>
       )}
 
       {showInventoryModal && (
-        <div className="profile-inventory-backdrop" onClick={() => setShowInventoryModal(false)}>
-          <article className="profile-inventory-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="profile-inventory-backdrop ui-modal-backdrop" onClick={() => setShowInventoryModal(false)}>
+          <article className="profile-inventory-modal ui-modal modal-lg" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>Your Inventory</h3>
               <button type="button" className="button-secondary" onClick={() => setShowInventoryModal(false)}>
@@ -748,7 +835,6 @@ const Profile = () => {
               </button>
             </div>
 
-            {inventoryError && <p className="error-text">{inventoryError}</p>}
             {inventoryLoading ? (
               <p className="muted">Loading inventory...</p>
             ) : inventoryUnits.length === 0 ? (
@@ -763,7 +849,7 @@ const Profile = () => {
                   <button
                     type="button"
                     key={unit.unitId}
-                    className={`profile-inventory-slot ${unit.source.item.rarity.trim().toLowerCase()}`}
+                    className={`profile-inventory-slot ${rarityClass(unit.source.item.rarity)}`}
                     onClick={() => handleSellModalOpen(unit)}
                   >
                     <span className="profile-slot-wear">{unit.wear}</span>
@@ -785,8 +871,8 @@ const Profile = () => {
       )}
 
       {showSellModal && sellTargetItem && (
-        <div className="profile-inventory-backdrop" onClick={() => setShowSellModal(false)}>
-          <article className="profile-inventory-modal profile-account-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="profile-inventory-backdrop ui-modal-backdrop" onClick={() => setShowSellModal(false)}>
+          <article className="profile-inventory-modal profile-account-modal ui-modal modal-md" onClick={(event) => event.stopPropagation()}>
             <div className="compact-row">
               <h3>List Item on Market</h3>
               <button type="button" className="button-secondary" onClick={() => setShowSellModal(false)}>
@@ -814,7 +900,6 @@ const Profile = () => {
                   {sellSubmitting ? "Creating..." : "Create Listing"}
                 </button>
               </div>
-              {sellFeedback && <p className="error-text">{sellFeedback}</p>}
             </article>
           </article>
         </div>

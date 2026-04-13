@@ -24,6 +24,28 @@
   /* Typography */
   --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
 
+  /* Universal layout system */
+  --layout-page-max: 1520px;
+  --layout-page-max-market: 1520px;
+  --layout-page-padding-x: clamp(1rem, 1.8vw, 1.5rem);
+  --layout-page-padding-x-market: clamp(1rem, 1.9vw, 1.65rem);
+  --layout-page-padding-top: 1.25rem;
+  --layout-page-padding-bottom: 2rem;
+
+  --surface-radius-sm: 10px;
+  --surface-radius-md: 14px;
+
+  --modal-max-sm: 620px;
+  --modal-max-md: 920px;
+  --modal-max-lg: 1030px;
+  --modal-max-xl: 1180px;
+  --modal-padding: 1rem;
+  --modal-padding-dense: 0.9rem;
+  --modal-backdrop-padding: 1rem;
+  --modal-backdrop-bg: rgba(0, 0, 0, 0.62);
+
+  --login-container-max: 480px;
+
   /* App background */
   --app-bg-color: #100a14;
   --app-bg-gradient: radial-gradient(circle at top, #2a1536 0%, #170f22 55%, #100a14 100%);
@@ -90,6 +112,29 @@
   --rarity-common-text: #bbf7d0;
   --rarity-common-bg: rgba(134, 239, 172, 0.24);
   --rarity-common-border: rgba(134, 239, 172, 0.4);
+
+  /* CS2 Rarity Tiers */
+  --rarity-consumer-text: #b0c3d9;
+  --rarity-consumer-bg: rgba(176, 195, 217, 0.16);
+  --rarity-consumer-border: rgba(176, 195, 217, 0.28);
+  --rarity-industrial-text: #5e98d9;
+  --rarity-industrial-bg: rgba(94, 152, 217, 0.20);
+  --rarity-industrial-border: rgba(94, 152, 217, 0.36);
+  --rarity-mil-spec-text: #7b9fe8;
+  --rarity-mil-spec-bg: rgba(75, 105, 255, 0.22);
+  --rarity-mil-spec-border: rgba(75, 105, 255, 0.42);
+  --rarity-restricted-text: #a87aff;
+  --rarity-restricted-bg: rgba(136, 71, 255, 0.22);
+  --rarity-restricted-border: rgba(136, 71, 255, 0.42);
+  --rarity-classified-text: #d94fe8;
+  --rarity-classified-bg: rgba(211, 44, 230, 0.22);
+  --rarity-classified-border: rgba(211, 44, 230, 0.42);
+  --rarity-covert-text: #eb4b4b;
+  --rarity-covert-bg: rgba(235, 75, 75, 0.22);
+  --rarity-covert-border: rgba(235, 75, 75, 0.42);
+  --rarity-contraband-text: #e4ae39;
+  --rarity-contraband-bg: rgba(228, 174, 57, 0.22);
+  --rarity-contraband-border: rgba(228, 174, 57, 0.42);
 }
 
 /* ------------------------------ */
@@ -158,6 +203,29 @@
   --rarity-common-text: #15803d;
   --rarity-common-bg: rgba(134, 239, 172, 0.24);
   --rarity-common-border: rgba(21, 128, 61, 0.3);
+
+  /* CS2 Rarity Tiers */
+  --rarity-consumer-text: #64849e;
+  --rarity-consumer-bg: rgba(176, 195, 217, 0.20);
+  --rarity-consumer-border: rgba(100, 132, 158, 0.34);
+  --rarity-industrial-text: #206aad;
+  --rarity-industrial-bg: rgba(94, 152, 217, 0.20);
+  --rarity-industrial-border: rgba(32, 106, 173, 0.36);
+  --rarity-mil-spec-text: #2f4dcd;
+  --rarity-mil-spec-bg: rgba(75, 105, 255, 0.16);
+  --rarity-mil-spec-border: rgba(47, 77, 205, 0.36);
+  --rarity-restricted-text: #6825cc;
+  --rarity-restricted-bg: rgba(136, 71, 255, 0.16);
+  --rarity-restricted-border: rgba(104, 37, 204, 0.36);
+  --rarity-classified-text: #b024c2;
+  --rarity-classified-bg: rgba(211, 44, 230, 0.16);
+  --rarity-classified-border: rgba(176, 36, 194, 0.36);
+  --rarity-covert-text: #cc2e2e;
+  --rarity-covert-bg: rgba(235, 75, 75, 0.16);
+  --rarity-covert-border: rgba(204, 46, 46, 0.36);
+  --rarity-contraband-text: #9a6206;
+  --rarity-contraband-bg: rgba(228, 174, 57, 0.18);
+  --rarity-contraband-border: rgba(154, 98, 6, 0.36);
 }
 
 /* ------------------------------ */
@@ -226,6 +294,29 @@
   --rarity-common-text: #7dffb3;
   --rarity-common-bg: rgba(125, 255, 179, 0.22);
   --rarity-common-border: rgba(125, 255, 179, 0.38);
+
+  /* CS2 Rarity Tiers */
+  --rarity-consumer-text: #c8dff0;
+  --rarity-consumer-bg: rgba(200, 223, 240, 0.14);
+  --rarity-consumer-border: rgba(200, 223, 240, 0.26);
+  --rarity-industrial-text: #72ddff;
+  --rarity-industrial-bg: rgba(45, 200, 255, 0.18);
+  --rarity-industrial-border: rgba(45, 200, 255, 0.34);
+  --rarity-mil-spec-text: #7fa8ff;
+  --rarity-mil-spec-bg: rgba(110, 140, 255, 0.22);
+  --rarity-mil-spec-border: rgba(110, 140, 255, 0.42);
+  --rarity-restricted-text: #c27aff;
+  --rarity-restricted-bg: rgba(170, 90, 255, 0.22);
+  --rarity-restricted-border: rgba(170, 90, 255, 0.42);
+  --rarity-classified-text: #ff9df3;
+  --rarity-classified-bg: rgba(255, 64, 214, 0.22);
+  --rarity-classified-border: rgba(255, 64, 214, 0.42);
+  --rarity-covert-text: #ff6b6b;
+  --rarity-covert-bg: rgba(255, 75, 75, 0.22);
+  --rarity-covert-border: rgba(255, 75, 75, 0.42);
+  --rarity-contraband-text: #ffd166;
+  --rarity-contraband-bg: rgba(255, 209, 102, 0.22);
+  --rarity-contraband-border: rgba(255, 209, 102, 0.42);
 }
 
 /* ------------------------------ */

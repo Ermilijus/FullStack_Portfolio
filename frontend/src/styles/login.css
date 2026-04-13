@@ -1,8 +1,8 @@
 .login-container {
-  max-width: 420px;
+  max-width: var(--login-container-max);
   margin: 4rem auto;
   padding: 1.5rem;
-  border-radius: 14px;
+  border-radius: var(--surface-radius-md);
   border: 1px solid var(--border-card-login);
   background: var(--surface-login-card);
 }

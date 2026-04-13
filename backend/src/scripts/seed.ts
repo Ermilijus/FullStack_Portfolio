@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { importCs2Catalog } from "./cs2Import.js";
 const prisma = new PrismaClient();
 
 const hashPassword = async (password: string) => {
@@ -133,305 +134,23 @@ const main = async () => {
   await prisma.lootbox.deleteMany();
   await prisma.item.deleteMany();
 
-  // ── Items (for lootbox rolls) ─────────────────────────────────────────────
-  const itemDragon = await prisma.item.upsert({
-    where: { id: "seed-item-dragon" },
-    update: {},
-    create: {
-      id: "seed-item-dragon",
-      name: "Dragon Slayer Blade",
-      image: "https://placehold.co/400x400/1a1a2e/e94560?text=Dragon+Blade",
-      description: "A legendary blade forged in dragonfire.",
-      rarity: "Legendary",
-      realWorldValue: 120.0,
-      weaponType: "Sword",
-      wearMin: 0.0,
-      wearMax: 0.2,
-    },
-  });
+  const catalog = await importCs2Catalog(prisma);
+  console.log("Imported CS2 catalog:", catalog.stats);
 
-  const itemVoid = await prisma.item.upsert({
-    where: { id: "seed-item-void" },
-    update: {},
-    create: {
-      id: "seed-item-void",
-      name: "Void Ripper",
-      image: "https://placehold.co/400x400/0d0d1a/9d4edd?text=Void+Ripper",
-      description: "Tears through reality itself.",
-      rarity: "Legendary",
-      realWorldValue: 95.0,
-      weaponType: "Dagger",
-      wearMin: 0.0,
-      wearMax: 0.15,
-    },
-  });
-
-  const itemStorm = await prisma.item.upsert({
-    where: { id: "seed-item-storm" },
-    update: {},
-    create: {
-      id: "seed-item-storm",
-      name: "Stormcaller Staff",
-      image: "https://placehold.co/400x400/0a1628/00b4d8?text=Stormcaller",
-      description: "Commands the fury of the storm.",
-      rarity: "Legendary",
-      realWorldValue: 150.0,
-      weaponType: "Staff",
-      wearMin: 0.0,
-      wearMax: 0.1,
-    },
-  });
-
-  const itemShadow = await prisma.item.upsert({
-    where: { id: "seed-item-shadow" },
-    update: {},
-    create: {
-      id: "seed-item-shadow",
-      name: "Shadow Crown",
-      image: "https://placehold.co/400x400/111111/ffd700?text=Shadow+Crown",
-      description: "Worn only by kings of the underworld.",
-      rarity: "Legendary",
-      realWorldValue: 200.0,
-    },
-  });
-
-  const itemNeonVector = await prisma.item.upsert({
-    where: { id: "seed-item-neon-vector" },
-    update: {},
-    create: {
-      id: "seed-item-neon-vector",
-      name: "Neon Vector SMG",
-      image: "https://placehold.co/400x400/071d2c/2dc8ff?text=Neon+Vector",
-      description: "A fast-firing SMG with electric trim lines.",
-      rarity: "Epic",
-      realWorldValue: 55.0,
-      weaponType: "SMG",
-      wearMin: 0.03,
-      wearMax: 0.35,
-    },
-  });
-
-  const itemRoyalHowl = await prisma.item.upsert({
-    where: { id: "seed-item-royal-howl" },
-    update: {},
-    create: {
-      id: "seed-item-royal-howl",
-      name: "Royal Howl Rifle",
-      image: "https://placehold.co/400x400/2c1120/f97316?text=Royal+Howl",
-      description: "A premium rifle skin from the royal collection.",
-      rarity: "Epic",
-      realWorldValue: 72.0,
-      weaponType: "Rifle",
-      wearMin: 0.04,
-      wearMax: 0.42,
-    },
-  });
-
-  const itemUrbanPulse = await prisma.item.upsert({
-    where: { id: "seed-item-urban-pulse" },
-    update: {},
-    create: {
-      id: "seed-item-urban-pulse",
-      name: "Urban Pulse Pistol",
-      image: "https://placehold.co/400x400/1f2937/93c5fd?text=Urban+Pulse",
-      description: "Reliable sidearm with a clean urban pattern.",
-      rarity: "Rare",
-      realWorldValue: 26.0,
-      weaponType: "Pistol",
-      wearMin: 0.08,
-      wearMax: 0.52,
-    },
-  });
-
-  const itemCopperCoil = await prisma.item.upsert({
-    where: { id: "seed-item-copper-coil" },
-    update: {},
-    create: {
-      id: "seed-item-copper-coil",
-      name: "Copper Coil Shotgun",
-      image: "https://placehold.co/400x400/3b2f2f/f59e0b?text=Copper+Coil",
-      description: "Heavy hitter with a rugged copper finish.",
-      rarity: "Rare",
-      realWorldValue: 31.0,
-      weaponType: "Shotgun",
-      wearMin: 0.09,
-      wearMax: 0.58,
-    },
-  });
-
-  const itemCarbonMesh = await prisma.item.upsert({
-    where: { id: "seed-item-carbon-mesh" },
-    update: {},
-    create: {
-      id: "seed-item-carbon-mesh",
-      name: "Carbon Mesh Knife",
-      image: "https://placehold.co/400x400/111827/a3e635?text=Carbon+Mesh",
-      description: "Entry-grade tactical blade for daily runs.",
-      rarity: "Common",
-      realWorldValue: 14.0,
-      weaponType: "Knife",
-      wearMin: 0.16,
-      wearMax: 0.74,
-    },
-  });
-
-  const itemSignalFlare = await prisma.item.upsert({
-    where: { id: "seed-item-signal-flare" },
-    update: {},
-    create: {
-      id: "seed-item-signal-flare",
-      name: "Signal Flare Charm",
-      image: "https://placehold.co/400x400/172554/60a5fa?text=Signal+Flare",
-      description: "A common charm from the foundry set.",
-      rarity: "Common",
-      realWorldValue: 9.0,
-    },
-  });
-
-  console.log("Seeded items");
-
-  // ── Lootboxes ─────────────────────────────────────────────────────────────
-  const genesisLootbox = await prisma.lootbox.upsert({
-    where: { id: "seed-lootbox-1" },
-    update: {
-      spendCurrency: "currency",
-      cost: 500,
-      isActive: true,
-    },
-    create: {
-      id: "seed-lootbox-1",
-      name: "Genesis Crate",
-      image: "https://placehold.co/400x400/141c29/4588d0?text=Genesis+Crate",
-      description: "The original crate. Contains rare and legendary items.",
-      cost: 500,
-      spendCurrency: "currency",
-      isActive: true,
-    },
-  });
-
-  const foundryLootbox = await prisma.lootbox.upsert({
-    where: { id: "seed-lootbox-2" },
-    update: {
-      spendCurrency: "currency",
-      cost: 320,
-      isActive: true,
-    },
-    create: {
-      id: "seed-lootbox-2",
-      name: "Neon Foundry Case",
-      image: "https://placehold.co/400x400/10243d/2dd4bf?text=Neon+Foundry",
-      description: "Factory-fresh lineup packed with bright high-voltage finishes.",
-      cost: 320,
-      spendCurrency: "currency",
-      isActive: true,
-    },
-  });
-
-  const relicLootbox = await prisma.lootbox.upsert({
-    where: { id: "seed-lootbox-3" },
-    update: {
-      spendCurrency: "specialCurrency",
-      cost: 75,
-      isActive: true,
-    },
-    create: {
-      id: "seed-lootbox-3",
-      name: "Ancient Relic Case",
-      image: "https://placehold.co/400x400/2b1d0e/facc15?text=Ancient+Relic",
-      description: "Dusty case rumored to hide old-world elite collectibles.",
-      cost: 75,
-      spendCurrency: "specialCurrency",
-      isActive: true,
-    },
-  });
-
-  const genesisPool = [
-    [itemDragon.id, 5],
-    [itemVoid.id, 5],
-    [itemStorm.id, 3],
-    [itemShadow.id, 2],
-    [itemRoyalHowl.id, 8],
-    [itemUrbanPulse.id, 12],
-  ] as [string, number][];
-
-  const foundryPool = [
-    [itemNeonVector.id, "Epic", 8],
-    [itemRoyalHowl.id, "Epic", 5],
-    [itemUrbanPulse.id, "Rare", 13],
-    [itemCopperCoil.id, "Rare", 11],
-    [itemSignalFlare.id, "Common", 16],
-    [itemCarbonMesh.id, "Common", 14],
-  ] as [string, string, number][];
-
-  const relicPool = [
-    [itemShadow.id, "Legendary", 2],
-    [itemDragon.id, "Legendary", 2],
-    [itemStorm.id, "Legendary", 1],
-    [itemRoyalHowl.id, "Epic", 7],
-    [itemNeonVector.id, "Epic", 7],
-    [itemCopperCoil.id, "Rare", 9],
-    [itemCarbonMesh.id, "Common", 12],
-  ] as [string, string, number][];
-
-  // Genesis pool
-  for (const [itemId, weight] of genesisPool) {
-    await prisma.lootboxItem.upsert({
-      where: { id: `seed-lbitem-genesis-${itemId}` },
-      update: {},
-      create: {
-        id: `seed-lbitem-genesis-${itemId}`,
-        lootboxId: genesisLootbox.id,
-        itemId,
-        rarity:
-          itemId === itemDragon.id || itemId === itemVoid.id || itemId === itemStorm.id || itemId === itemShadow.id
-            ? "Legendary"
-            : itemId === itemRoyalHowl.id
-              ? "Epic"
-              : "Rare",
-        weight,
-        quantity: 1,
-      },
-    });
+  if (catalog.importedItems.length === 0 || catalog.casePools.length === 0) {
+    throw new Error("CS2 catalog import did not produce usable items and cases.");
   }
 
-  // Neon Foundry pool
-  for (const [itemId, rarity, weight] of foundryPool) {
-    await prisma.lootboxItem.upsert({
-      where: { id: `seed-lbitem-foundry-${itemId}` },
-      update: {},
-      create: {
-        id: `seed-lbitem-foundry-${itemId}`,
-        lootboxId: foundryLootbox.id,
-        itemId,
-        rarity,
-        weight,
-        quantity: 1,
-      },
-    });
-  }
-
-  // Ancient Relic pool
-  for (const [itemId, rarity, weight] of relicPool) {
-    await prisma.lootboxItem.upsert({
-      where: { id: `seed-lbitem-relic-${itemId}` },
-      update: {},
-      create: {
-        id: `seed-lbitem-relic-${itemId}`,
-        lootboxId: relicLootbox.id,
-        itemId,
-        rarity,
-        weight,
-        quantity: 1,
-      },
-    });
-  }
+  const legendaryItems = catalog.importedItems.filter((item) => item.rarity === "Legendary");
+  const highlightedItems = (legendaryItems.length > 0 ? legendaryItems : catalog.importedItems).slice(0, 4);
+  const featuredPool = catalog.casePools[0];
 
   // ── Recent Legendary Rolls (for the Home page panel) ─────────────────────
   const rollData = [
-    { userId: user1.id, itemId: itemDragon.id },
-    { userId: user3.id, itemId: itemVoid.id },
-    { userId: user2.id, itemId: itemStorm.id },
-    { userId: user1.id, itemId: itemShadow.id },
+    { userId: user1.id, itemId: highlightedItems[0]?.id ?? catalog.importedItems[0].id },
+    { userId: user3.id, itemId: highlightedItems[1]?.id ?? catalog.importedItems[1].id },
+    { userId: user2.id, itemId: highlightedItems[2]?.id ?? catalog.importedItems[2].id },
+    { userId: user1.id, itemId: highlightedItems[3]?.id ?? catalog.importedItems[3].id },
   ];
 
   await prisma.lootboxRoll.deleteMany();
@@ -439,9 +158,9 @@ const main = async () => {
     await prisma.lootboxRoll.create({
       data: {
         userId: roll.userId,
-        lootboxId: genesisLootbox.id,
+        lootboxId: featuredPool.lootboxId,
         resultItemId: roll.itemId,
-        costPaid: genesisLootbox.cost,
+        costPaid: featuredPool.cost,
       },
     });
   }
@@ -453,23 +172,7 @@ const main = async () => {
     ...fakeUsers,
   ];
 
-  const simulatedCasePools = [
-    {
-      lootboxId: genesisLootbox.id,
-      cost: genesisLootbox.cost,
-      entries: genesisPool.map(([itemId, weight]) => ({ itemId, weight })),
-    },
-    {
-      lootboxId: foundryLootbox.id,
-      cost: foundryLootbox.cost,
-      entries: foundryPool.map(([itemId, _rarity, weight]) => ({ itemId, weight })),
-    },
-    {
-      lootboxId: relicLootbox.id,
-      cost: relicLootbox.cost,
-      entries: relicPool.map(([itemId, _rarity, weight]) => ({ itemId, weight })),
-    },
-  ];
+  const simulatedCasePools = catalog.casePools;
 
   const simulatedRollCount = randomInt(170, 260);
   for (let i = 0; i < simulatedRollCount; i += 1) {
@@ -596,18 +299,7 @@ const main = async () => {
     await prisma.forumReply.createMany({ data: replyData });
   }
 
-  const tradableItems = [
-    itemDragon,
-    itemVoid,
-    itemStorm,
-    itemShadow,
-    itemNeonVector,
-    itemRoyalHowl,
-    itemUrbanPulse,
-    itemCopperCoil,
-    itemCarbonMesh,
-    itemSignalFlare,
-  ];
+  const tradableItems = catalog.importedItems.slice(0, 600);
 
   const listingCount = 50;
   for (let i = 0; i < listingCount; i += 1) {
