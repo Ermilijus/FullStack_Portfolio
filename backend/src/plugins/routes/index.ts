@@ -7,14 +7,18 @@ import { homeDataRoutes } from "../../routes/home.js";
 import { profileRoutes } from "../../routes/profile.js";
 import { lootboxRoutes } from "../../routes/lootbox.js";
 import { marketRoutes } from "../../routes/market.js";
+import { forumRoutes } from "../../routes/forum.js";
+import { adminRoutes } from "../../routes/admin.js";
 
 export const registerRoutes: FastifyPluginAsync = async (app) => {
   await app.register(healthRoutes);
   await app.register(projectRoutes, { prefix: "/projects" });
   await registerAuthRoutes(app);
   await app.register(bannerRoutes, { prefix: "/api/banners" });
+  await app.register(adminRoutes, { prefix: "/api/admin" });
   await app.register(homeDataRoutes, { prefix: "/api/home" });
   await app.register(profileRoutes, { prefix: "/api/profile" });
   await app.register(lootboxRoutes, { prefix: "/api/lootbox" });
   await app.register(marketRoutes, { prefix: "/api/market" });
+  await app.register(forumRoutes, { prefix: "/api/forum" });
 };

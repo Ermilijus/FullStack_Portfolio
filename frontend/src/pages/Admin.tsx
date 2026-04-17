@@ -7,6 +7,7 @@ import {
 } from "../api";
 import { useAppContext } from "../context/AppContext";
 import { useNotifications } from "../context/NotificationContext";
+import CurrencyManager from "../components/CurrencyManager";
 
 type Banner = {
   id: string;
@@ -19,7 +20,7 @@ type Banner = {
   displayOrder: number;
 };
 
-const VALID_LINK_PATHS = ["/home", "/forum", "/lootbox", "/market", "/trade", "/profile"];
+const VALID_LINK_PATHS = ["/home", "/forum", "/lootbox", "/market", "/profile"];
 
 const emptyForm = (): Omit<Banner, "id"> => ({
   title: "",
@@ -216,10 +217,15 @@ const Admin = () => {
     if (!window.confirm("Delete this banner? This cannot be undone.")) return;
     setDeletingId(id);
     try {
-      await fetch(`${API_BASE_URL}/api/banners/admin/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/banners/admin/${id}`, {
         method: "DELETE",
         headers: authHeaders,
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete banner");
+      }
+
       await fetchBanners();
       notifyInfo("Banner deleted.", "Admin");
     } catch {
@@ -296,6 +302,11 @@ const Admin = () => {
             </table>
           </div>
         )}
+      </article>
+
+      {/* ── Currency Manager ──────────────────────────────────────────── */}
+      <article className="card" style={{ marginTop: "1rem" }}>
+        <CurrencyManager onCurrencyUpdated={() => {}} />
       </article>
 
       <article className="card" style={{ marginTop: "1rem" }}>

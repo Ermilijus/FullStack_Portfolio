@@ -1222,7 +1222,7 @@ const Market = () => {
                       <p className="market-item-price">{formatUsd(listing.listedPriceUsd)}</p>
                       <div className="market-seller-chip" title={`Seller: ${listing.seller.username}`}>
                         <img
-                          src={resolveAvatarUrl(listing.seller.avatar)}
+                          src={resolveAvatarUrl(listing.seller.avatar, listing.seller.username)}
                           alt={listing.seller.username}
                           className="market-seller-avatar"
                         />
@@ -1486,7 +1486,7 @@ const Market = () => {
                           <p className="market-item-price">{formatUsd(listing.listedPriceUsd)}</p>
                           <div className="market-seller-chip" title={`Seller: ${listing.seller.username}`}>
                             <img
-                              src={resolveAvatarUrl(listing.seller.avatar)}
+                              src={resolveAvatarUrl(listing.seller.avatar, listing.seller.username)}
                               alt={listing.seller.username}
                               className="market-seller-avatar"
                             />
@@ -1564,7 +1564,7 @@ const Market = () => {
                       <span className="market-meta-label">Seller</span>
                       <span className="market-seller-inline">
                         <img
-                          src={resolveAvatarUrl(selectedListing.seller.avatar)}
+                          src={resolveAvatarUrl(selectedListing.seller.avatar, selectedListing.seller.username)}
                           alt={selectedListing.seller.username}
                           className="market-seller-avatar"
                         />

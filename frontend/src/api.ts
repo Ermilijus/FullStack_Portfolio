@@ -270,7 +270,7 @@ export const removeLootboxFavorite = async (token: string, id: string): Promise<
     headers: createAuthHeaders(token),
   });
 
-  if (!response.ok && response.status !== 204) {
+  if (!response.ok) {
     throw new Error("Failed to remove favorite");
   }
 };
@@ -924,4 +924,262 @@ export const fetchUserForumReplies = async (userId: string): Promise<UserForumRe
 
   const data = (await response.json()) as UserForumRepliesResponse;
   return data.replies;
+};
+
+export type ForumCategory = {
+  id: string;
+  name: string;
+  description: string | null;
+  postCount: number;
+};
+
+export type ForumReaction = "like" | "dislike" | null;
+
+export type ForumPostSummary = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  category: {
+    id: string;
+    name: string;
+  };
+  author: {
+    id: string;
+    username: string;
+    avatar: string | null;
+  };
+  isAuthor: boolean;
+  replyCount: number;
+  viewCount: number;
+  likeCount: number;
+  dislikeCount: number;
+  viewerReaction: ForumReaction;
+};
+
+export type ForumReplyNode = {
+  id: string;
+  postId: string;
+  parentReplyId: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  isAuthor: boolean;
+  author: {
+    id: string;
+    username: string;
+    avatar: string | null;
+  };
+  children: ForumReplyNode[];
+};
+
+type ForumCategoriesResponse = {
+  categories: ForumCategory[];
+};
+
+type ForumPostsResponse = {
+  posts: ForumPostSummary[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+type ForumPostDetailResponse = {
+  post: ForumPostSummary;
+  replies: ForumReplyNode[];
+};
+
+type ForumReactionResponse = {
+  likeCount: number;
+  dislikeCount: number;
+  viewerReaction: ForumReaction;
+};
+
+type ForumViewResponse = {
+  viewCount: number;
+};
+
+export type ForumPostFilters = {
+  search?: string;
+  categoryId?: string;
+  sort?: "new" | "active" | "top";
+  page?: number;
+  pageSize?: number;
+};
+
+const parseApiError = async (response: Response, fallback: string): Promise<Error> => {
+  const payload = await response.json().catch(() => ({ error: fallback }));
+  const message = typeof payload.error === "string" ? payload.error : fallback;
+  return new Error(message);
+};
+
+export const fetchForumCategories = async (token: string): Promise<ForumCategory[]> => {
+  const response = await fetch(`${API_BASE_URL}/api/forum/categories`, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to load forum categories");
+  }
+
+  const data = (await response.json()) as ForumCategoriesResponse;
+  return data.categories;
+};
+
+export const fetchForumPosts = async (
+  token: string,
+  filters: ForumPostFilters = {},
+): Promise<ForumPostsResponse> => {
+  const params = new URLSearchParams();
+
+  if (filters.search?.trim()) {
+    params.set("search", filters.search.trim());
+  }
+
+  if (filters.categoryId?.trim()) {
+    params.set("categoryId", filters.categoryId.trim());
+  }
+
+  if (filters.sort) {
+    params.set("sort", filters.sort);
+  }
+
+  if (filters.page) {
+    params.set("page", String(filters.page));
+  }
+
+  if (filters.pageSize) {
+    params.set("pageSize", String(filters.pageSize));
+  }
+
+  const url = params.toString()
+    ? `${API_BASE_URL}/api/forum/posts?${params.toString()}`
+    : `${API_BASE_URL}/api/forum/posts`;
+
+  const response = await fetch(url, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to load forum posts");
+  }
+
+  return (await response.json()) as ForumPostsResponse;
+};
+
+export const fetchForumPostDetail = async (
+  token: string,
+  postId: string,
+): Promise<ForumPostDetailResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/forum/posts/${encodeURIComponent(postId)}`, {
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to load forum post");
+  }
+
+  return (await response.json()) as ForumPostDetailResponse;
+};
+
+export const createForumPost = async (
+  token: string,
+  payload: { categoryId: string; title: string; content: string },
+): Promise<ForumPostSummary> => {
+  const response = await fetch(`${API_BASE_URL}/api/forum/posts`, {
+    method: "POST",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to create post");
+  }
+
+  const data = (await response.json()) as { post: ForumPostSummary };
+  return data.post;
+};
+
+export const updateForumPost = async (
+  token: string,
+  postId: string,
+  payload: { categoryId?: string; title?: string; content?: string },
+): Promise<ForumPostSummary> => {
+  const response = await fetch(`${API_BASE_URL}/api/forum/posts/${encodeURIComponent(postId)}`, {
+    method: "PUT",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to update post");
+  }
+
+  const data = (await response.json()) as { post: ForumPostSummary };
+  return data.post;
+};
+
+export const createForumReply = async (
+  token: string,
+  postId: string,
+  payload: { content: string; parentReplyId?: string },
+): Promise<ForumReplyNode> => {
+  const response = await fetch(`${API_BASE_URL}/api/forum/posts/${encodeURIComponent(postId)}/replies`, {
+    method: "POST",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to create reply");
+  }
+
+  const data = (await response.json()) as { reply: ForumReplyNode };
+  return data.reply;
+};
+
+export const setForumPostReaction = async (
+  token: string,
+  postId: string,
+  reaction: ForumReaction,
+): Promise<ForumReactionResponse> => {
+  const response = await fetch(`${API_BASE_URL}/api/forum/posts/${encodeURIComponent(postId)}/reaction`, {
+    method: "POST",
+    headers: {
+      ...createAuthHeaders(token),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ reaction }),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to update reaction");
+  }
+
+  return (await response.json()) as ForumReactionResponse;
+};
+
+export const registerForumPostView = async (token: string, postId: string): Promise<number> => {
+  const response = await fetch(`${API_BASE_URL}/api/forum/posts/${encodeURIComponent(postId)}/views`, {
+    method: "POST",
+    headers: createAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response, "Failed to register post view");
+  }
+
+  const data = (await response.json()) as ForumViewResponse;
+  return data.viewCount;
 };

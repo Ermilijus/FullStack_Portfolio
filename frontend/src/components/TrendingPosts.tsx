@@ -27,7 +27,7 @@ const formatRelativeTime = (iso: string): string => {
 
 const AvatarCircle = ({ username, avatar }: { username: string; avatar: string | null }) => {
   const [imgFailed, setImgFailed] = useState(false);
-  const src = imgFailed ? resolveAvatarUrl(null) : resolveAvatarUrl(avatar);
+  const src = imgFailed ? resolveAvatarUrl(null, username) : resolveAvatarUrl(avatar, username);
 
   return (
     <img

@@ -59,16 +59,4 @@ export const registerAuthRoutes = async (app: FastifyInstance) => {
     });
     return { user };
   });
-
-  // Protected home endpoint (legacy — kept for compatibility)
-  app.get("/api/home", { onRequest: [app.authenticate] }, async (request) => {
-    const user = await app.prisma.user.findUnique({
-      where: { id: request.user.id },
-      select: { username: true },
-    });
-
-    return {
-      message: `Welcome back, ${user?.username ?? "Explorer"}!`,
-    };
-  });
 };

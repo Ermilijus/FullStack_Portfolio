@@ -7,6 +7,7 @@ export type AppNotification = {
   type: NotificationType;
   title: string;
   message: string;
+  messageNode?: ReactNode; // For rich text content (e.g., colored text)
   durationMs: number;
   createdAt: number;
 };
@@ -16,6 +17,7 @@ type NotifyOptions = {
   type?: NotificationType;
   title?: string;
   durationMs?: number;
+  messageNode?: ReactNode; // For rich text content
 };
 
 type NotificationContextType = {
@@ -25,6 +27,7 @@ type NotificationContextType = {
   notifyError: (message: string, title?: string, durationMs?: number) => string;
   notifyWarning: (message: string, title?: string, durationMs?: number) => string;
   notifyInfo: (message: string, title?: string, durationMs?: number) => string;
+  notifyCurrencyChange: (username: string, amount: number, title?: string, durationMs?: number) => string;
   dismissNotification: (id: string) => void;
 };
 
@@ -66,7 +69,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setNotifications((current) => current.filter((notification) => notification.id !== id));
   }, []);
 
-  const notify = useCallback(({ message, type = "info", title, durationMs }: NotifyOptions) => {
+  const notify = useCallback(({ message, type = "info", title, durationMs, messageNode }: NotifyOptions) => {
     const normalizedMessage = message.trim();
     if (!normalizedMessage) {
       return "";
@@ -80,6 +83,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       type,
       title: title?.trim() || DEFAULT_TITLES[type],
       message: normalizedMessage,
+      messageNode,
       durationMs: resolvedDuration,
       createdAt,
     };
@@ -126,6 +130,31 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     [notify],
   );
 
+  const notifyCurrencyChange = useCallback(
+    (username: string, amount: number, title?: string, durationMs?: number) => {
+      const isAdded = amount >= 0;
+      const sign = isAdded ? "+" : "";
+      const color = isAdded ? "#4ade80" : "#ff6b6b"; // green for add, red for subtract
+      const message = `${username} had their balance adjusted`;
+      const messageNode = (
+        <span>
+          {username}{" "}
+          <span style={{ color }}>
+            {sign}{amount}
+          </span>
+        </span>
+      );
+      return notify({
+        message,
+        messageNode,
+        title: title || "Currency Updated",
+        durationMs,
+        type: "info",
+      });
+    },
+    [notify],
+  );
+
   useEffect(() => {
     return () => {
       for (const timerId of timersRef.current.values()) {
@@ -143,9 +172,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       notifyError,
       notifyWarning,
       notifyInfo,
+      notifyCurrencyChange,
       dismissNotification,
     }),
-    [dismissNotification, notifications, notify, notifyError, notifyInfo, notifySuccess, notifyWarning],
+    [dismissNotification, notifications, notify, notifyError, notifyInfo, notifySuccess, notifyWarning, notifyCurrencyChange],
   );
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;

@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from "fastify";
 
 // Valid app routes that can be used as banner link targets
-const VALID_LINK_PATHS = ["/home", "/forum", "/lootbox", "/market", "/trade", "/profile"];
+const VALID_LINK_PATHS = ["/home", "/forum", "/lootbox", "/market", "/profile"];
 
 type BannerBody = {
   title: string;

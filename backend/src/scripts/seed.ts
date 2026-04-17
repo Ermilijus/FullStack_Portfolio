@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import { ForumReactionType, PrismaClient, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { importCs2Catalog } from "./cs2Import.js";
 const prisma = new PrismaClient();
@@ -39,12 +39,14 @@ const main = async () => {
     hashPassword("user123"),
   ]);
 
+  const USER_ROLES: UserRole[] = [UserRole.user, UserRole.vip, UserRole.superVip];
+
   const user1 = await prisma.user.create({
     data: {
       username: "user1",
       email: "user1@example.com",
       passwordHash: hp1,
-      role: "user",
+      role: pickRandom(USER_ROLES),
       currency: 1800,
       specialCurrency: 120,
     },
@@ -55,7 +57,7 @@ const main = async () => {
       username: "admin",
       email: "admin@example.com",
       passwordHash: hp2,
-      role: "admin",
+      role: UserRole.admin,
       currency: 9999,
       specialCurrency: 999,
     },
@@ -66,7 +68,7 @@ const main = async () => {
       username: "user2",
       email: "user2@example.com",
       passwordHash: hp3,
-      role: "user",
+      role: pickRandom(USER_ROLES),
       currency: 1400,
       specialCurrency: 90,
     },
@@ -82,7 +84,7 @@ const main = async () => {
         username: `sim_user_${i}`,
         email: `sim_user_${i}@example.com`,
         passwordHash: fakePasswordHash,
-        role: "user",
+        role: pickRandom(USER_ROLES),
         currency: randomInt(300, 3200),
       },
       select: {
@@ -193,6 +195,9 @@ const main = async () => {
   console.log("Seeded lootboxes + simulated case openings");
 
   // ── Forum Seed Data ───────────────────────────────────────────────────────
+  await prisma.forumPostView.deleteMany();
+  await prisma.forumPostReaction.deleteMany();
+  await prisma.forumReply.deleteMany();
   await prisma.forumPost.deleteMany();
   await prisma.forumCategory.deleteMany();
   await prisma.marketListing.deleteMany();
@@ -229,11 +234,25 @@ const main = async () => {
     },
   });
 
-  // Add some replies so the trending algo has data
+  const baseReply1 = await prisma.forumReply.create({
+    data: {
+      postId: post1.id,
+      userId: user2.id,
+      content: "Welcome! Great place to start.",
+    },
+  });
+  await prisma.forumReply.create({
+    data: {
+      postId: post1.id,
+      userId: user3.id,
+      parentReplyId: baseReply1.id,
+      content: "Same here, this forum is shaping up nicely.",
+    },
+  });
+
   await prisma.forumReply.createMany({
     data: [
-      { postId: post1.id, userId: user2.id, content: "Welcome! Great place to start." },
-      { postId: post1.id, userId: user3.id, content: "Same, been eyeing those legendary crates." },
+      { postId: post1.id, userId: user3.id, content: "Been eyeing those legendary crates too." },
       { postId: post2.id, userId: user1.id, content: "Hyped for the seasonal crates!" },
       { postId: post2.id, userId: user3.id, content: "Any hint on the rarity rates?" },
       { postId: post2.id, userId: user1.id, content: "Will the current crates be retired?" },
@@ -296,7 +315,117 @@ const main = async () => {
       };
     });
 
-    await prisma.forumReply.createMany({ data: replyData });
+    const createdReplies = [] as Array<{ id: string }>;
+    for (const data of replyData) {
+      const created = await prisma.forumReply.create({ data });
+      createdReplies.push({ id: created.id });
+    }
+
+    if (createdReplies.length >= 2 && Math.random() > 0.4) {
+      await prisma.forumReply.create({
+        data: {
+          postId: post.id,
+          userId: pickRandom(fakeUsers).id,
+          parentReplyId: createdReplies[0].id,
+          content: pickRandom([
+            "Replying here to add more context.",
+            "Nested thread makes this easier to follow.",
+            "Agree with this point and adding one more thought.",
+          ]),
+        },
+      });
+    }
+
+    const viewers = [post.userId, ...fakeUsers.map((user) => user.id)].filter(
+      (value, index, all) => all.indexOf(value) === index,
+    );
+
+    const sampledViewers = viewers.slice(0, randomInt(2, Math.min(8, viewers.length)));
+    for (const viewerId of sampledViewers) {
+      await prisma.forumPostView.upsert({
+        where: {
+          postId_userId: {
+            postId: post.id,
+            userId: viewerId,
+          },
+        },
+        create: {
+          postId: post.id,
+          userId: viewerId,
+        },
+        update: {
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    const sampledReactions = sampledViewers.slice(0, randomInt(1, Math.min(5, sampledViewers.length)));
+    for (const userId of sampledReactions) {
+      await prisma.forumPostReaction.upsert({
+        where: {
+          postId_userId: {
+            postId: post.id,
+            userId,
+          },
+        },
+        create: {
+          postId: post.id,
+          userId,
+          type: Math.random() > 0.25 ? ForumReactionType.like : ForumReactionType.dislike,
+        },
+        update: {
+          type: Math.random() > 0.25 ? ForumReactionType.like : ForumReactionType.dislike,
+        },
+      });
+    }
+  }
+
+  const baseViews = [
+    { postId: post1.id, userId: user1.id },
+    { postId: post1.id, userId: user2.id },
+    { postId: post1.id, userId: user3.id },
+    { postId: post2.id, userId: user1.id },
+    { postId: post2.id, userId: user2.id },
+    { postId: post3.id, userId: user2.id },
+    { postId: post3.id, userId: user3.id },
+  ];
+
+  for (const baseView of baseViews) {
+    await prisma.forumPostView.upsert({
+      where: {
+        postId_userId: {
+          postId: baseView.postId,
+          userId: baseView.userId,
+        },
+      },
+      create: baseView,
+      update: {
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  const baseReactions = [
+    { postId: post1.id, userId: user2.id, type: ForumReactionType.like },
+    { postId: post1.id, userId: user3.id, type: ForumReactionType.like },
+    { postId: post2.id, userId: user1.id, type: ForumReactionType.like },
+    { postId: post2.id, userId: user3.id, type: ForumReactionType.dislike },
+    { postId: post3.id, userId: user1.id, type: ForumReactionType.like },
+  ];
+
+  for (const baseReaction of baseReactions) {
+    await prisma.forumPostReaction.upsert({
+      where: {
+        postId_userId: {
+          postId: baseReaction.postId,
+          userId: baseReaction.userId,
+        },
+      },
+      create: baseReaction,
+      update: {
+        type: baseReaction.type,
+      },
+    });
   }
 
   const tradableItems = catalog.importedItems.slice(0, 600);
@@ -352,36 +481,45 @@ const main = async () => {
   await prisma.banner.createMany({
     data: [
       {
-        title: "Genesis Crate is Live",
-        subtitle: "Open your first crate and discover Legendary items",
-        imageUrl: "https://placehold.co/1200x400/141c29/4588d0?text=Genesis+Crate+%E2%80%94+Now+Live",
-        linkPath: "/lootbox",
-        linkLabel: "Open Now",
+        title: "Daily Market Movers",
+        subtitle: "Track hot listings and price swings before everyone else",
+        imageUrl: "https://placehold.co/1200x400/0f1724/2dd4bf?text=Market+Movers+%E2%80%94+Daily+Highlights",
+        linkPath: "/market",
+        linkLabel: "View Listings",
         displayOrder: 0,
         isActive: true,
       },
       {
-        title: "New Items on the Market",
-        subtitle: "Browse today's freshest listings from community traders",
-        imageUrl: "https://placehold.co/1200x400/0a1628/2dc8ff?text=Market+%E2%80%94+Fresh+Listings",
-        linkPath: "/market",
-        linkLabel: "Browse Market",
+        title: "Community Strategy Threads",
+        subtitle: "Read build guides, trade tips, and weekly discussion picks",
+        imageUrl: "https://placehold.co/1200x400/1b1033/f59e0b?text=Forum+%E2%80%94+Top+Threads",
+        linkPath: "/forum",
+        linkLabel: "Join Discussion",
         displayOrder: 1,
         isActive: true,
       },
       {
-        title: "Have Something to Trade?",
-        subtitle: "Post an offer and connect with other traders",
-        imageUrl: "https://placehold.co/1200x400/1a2435/e94560?text=Trade+%E2%80%94+Post+Your+Offer",
-        linkPath: "/trade",
-        linkLabel: "Start Trading",
+        title: "This Week's Featured Drops",
+        subtitle: "Open curated lootboxes with standout rarity pools",
+        imageUrl: "https://placehold.co/1200x400/0b1f35/60a5fa?text=Featured+Drops+%E2%80%94+This+Week",
+        linkPath: "/lootbox",
+        linkLabel: "Open Lootboxes",
         displayOrder: 2,
+        isActive: true,
+      },
+      {
+        title: "Inventory Snapshot",
+        subtitle: "Review your latest pulls and portfolio value at a glance",
+        imageUrl: "https://placehold.co/1200x400/1d0f1a/f472b6?text=Profile+%E2%80%94+Inventory+Snapshot",
+        linkPath: "/profile",
+        linkLabel: "Open Profile",
+        displayOrder: 3,
         isActive: true,
       },
     ],
   });
 
-  console.log("Seeded 3 banners");
+  console.log("Seeded 4 banners");
 };
 
 main()

@@ -614,7 +614,10 @@ const Profile = () => {
   };
 
   const avatarValue = profile?.avatar ?? user?.avatar ?? null;
-  const resolvedAvatarValue = resolveAvatarUrl(avatarValue);
+  const resolvedAvatarValue = resolveAvatarUrl(
+    avatarValue,
+    profile?.id ?? profile?.username ?? user?.id ?? user?.username,
+  );
 
   return (
     <section className="profile-page ui-section">

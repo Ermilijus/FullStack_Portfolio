@@ -3,12 +3,12 @@ import AppLayout from "./components/AppLayout";
 import { useAppContext } from "./context/AppContext";
 import Admin from "./pages/Admin";
 import Forum from "./pages/Forum";
+import ForumThread from "./pages/ForumThread";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Lootbox from "./pages/Lootbox";
 import Market from "./pages/Market";
 import Profile from "./pages/Profile";
-import Trade from "./pages/Trade";
 
 const RequireAuth = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
   const location = useLocation();
@@ -45,10 +45,10 @@ const App = () => {
           <Route index element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<Home />} />
           <Route path="/forum" element={<Forum />} />
+          <Route path="/forum/:postId" element={<ForumThread />} />
           <Route path="/lootbox" element={<Lootbox />} />
           <Route path="/market" element={<Market />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/trade" element={<Trade />} />
 
           {/* Admin-only routes */}
           <Route element={<RequireAdmin isAdmin={isAdmin} />}>

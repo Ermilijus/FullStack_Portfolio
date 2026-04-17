@@ -28,7 +28,7 @@ const NotificationViewport = () => {
           </div>
           <div className="app-notification-copy">
             <strong>{notification.title}</strong>
-            <p>{notification.message}</p>
+            <p>{notification.messageNode || notification.message}</p>
           </div>
           <button
             type="button"

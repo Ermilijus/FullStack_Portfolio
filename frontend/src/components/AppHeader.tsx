@@ -7,19 +7,18 @@ const BASE_NAV_ITEMS = [
   { to: "/home", label: "Home" },
   { to: "/lootbox", label: "Lootbox" },
   { to: "/market", label: "Market" },
-  { to: "/trade", label: "Trade" },
   { to: "/forum", label: "Forum" },
   { to: "/profile", label: "Profile" },
 ];
 
 const ADMIN_NAV_ITEM = { to: "/admin", label: "Admin" };
 
-type ThemePreset = "dark" | "light" | "neon" | "custom";
+type ThemePreset = "dark" | "light" | "neon";
 
 const THEME_STORAGE_KEY = "themePreset";
 
 const isThemePreset = (value: string): value is ThemePreset => {
-  return value === "dark" || value === "light" || value === "neon" || value === "custom";
+  return value === "dark" || value === "light" || value === "neon";
 };
 
 const AppHeader = () => {
@@ -80,10 +79,9 @@ const AppHeader = () => {
             <option value="light">Light</option>
             <option value="dark">Dark</option>
             <option value="neon">Neon</option>
-            <option value="custom">Custom</option>
           </select>
         </label>
-        <img src={resolveAvatarUrl(user?.avatar)} alt="User avatar" className="user-chip-avatar" />
+        <img src={resolveAvatarUrl(user?.avatar, user?.id ?? user?.username)} alt="User avatar" className="user-chip-avatar" />
         <span>{user?.username ?? user?.email ?? "User"}</span>
         <button type="button" className="logout-btn" onClick={handleLogout}>
           Logout

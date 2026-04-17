@@ -7,13 +7,11 @@
   - Dark (default): :root
   - Light: :root[data-theme="light"]
   - Neon: :root[data-theme="neon"]
-  - Custom: :root[data-theme="custom"] (starts as Dark clone)
 
   How to switch themes at runtime:
   document.documentElement.setAttribute("data-theme", "light");
   document.documentElement.setAttribute("data-theme", "dark");
   document.documentElement.setAttribute("data-theme", "neon");
-  document.documentElement.setAttribute("data-theme", "custom");
 */
 
 /* ------------------------------ */
@@ -21,6 +19,8 @@
 /* ------------------------------ */
 :root,
 :root[data-theme="dark"] {
+  color-scheme: dark;
+
   /* Typography */
   --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
 
@@ -57,6 +57,7 @@
   --text-user-chip: #e6caeb;
   --text-error: #ff9ca5;
   --text-on-button: #ffffff;
+  --button-text-shadow: none;
 
   /* Surface colors */
   --surface-card: #1e1327;
@@ -79,9 +80,67 @@
   /* Buttons */
   --button-radius: 10px;
   --button-padding: 0.6rem 1rem;
+  --accent: #b44ad2;
   --button-bg: #b44ad2;
   --button-bg-hover: #9f3fc2;
   --button-bg-active: #8d34b0;
+  --focus-ring: #d58ce7;
+  --focus-ring-soft: rgba(181, 74, 210, 0.25);
+
+  /* Global control and overlay tokens */
+  --control-option-bg: #1b1224;
+  --control-option-text: #f7edf9;
+  --surface-border-soft: rgba(255, 255, 255, 0.08);
+  --surface-border-subtle: rgba(255, 255, 255, 0.06);
+  --surface-overlay: rgba(0, 0, 0, 0.24);
+  --selection-bg: rgba(213, 140, 231, 0.38);
+  --selection-text: #fff7ff;
+  --link-hover-text: #f1d7fa;
+
+  /* Shared UI semantics */
+  --admin-accent: #f59e0b;
+  --admin-accent-bg: rgba(245, 158, 11, 0.08);
+  --status-success-text: #4ade80;
+  --status-success-bg: rgba(34, 197, 94, 0.15);
+  --status-success-border: rgba(34, 197, 94, 0.26);
+  --status-danger-text: #f87171;
+  --status-danger-bg: rgba(239, 68, 68, 0.12);
+  --status-danger-bg-hover: rgba(239, 68, 68, 0.24);
+  --status-danger-border: rgba(239, 68, 68, 0.25);
+  --status-warning-text: #fbbf24;
+  --status-warning-bg: rgba(245, 158, 11, 0.16);
+  --status-warning-border: rgba(245, 158, 11, 0.28);
+
+  /* Hero/media overlays */
+  --banner-overlay-start: rgba(0, 0, 0, 0.62);
+  --banner-overlay-end: rgba(0, 0, 0, 0.15);
+  --banner-title-text: #ffffff;
+  --banner-subtitle-text: rgba(255, 255, 255, 0.82);
+  --banner-title-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --banner-arrow-bg: rgba(0, 0, 0, 0.45);
+  --banner-arrow-bg-hover: rgba(0, 0, 0, 0.7);
+  --banner-dot-bg: rgba(255, 255, 255, 0.4);
+  --banner-dot-active-bg: #ffffff;
+
+  /* Shared call-to-action gradients */
+  --cta-primary-bg: linear-gradient(135deg, #c064e2 0%, #7a3bc6 100%);
+  --cta-primary-bg-hover: linear-gradient(135deg, #d184ec 0%, #8f52d4 100%);
+  --cta-primary-bg-active: linear-gradient(135deg, #a24bcc 0%, #6830ae 100%);
+  --cta-primary-text: #fff6ff;
+  --cta-primary-shadow: 0 8px 18px rgba(122, 59, 198, 0.35);
+
+  /* Component-specific extras */
+  --drop-card-hover-bg: color-mix(in oklab, var(--surface-nav-active) 74%, var(--button-bg-hover));
+  --wallet-balance-border: color-mix(in oklab, #33d4ff 45%, var(--border-card));
+
+  /* Lootbox-specific theming */
+  --lootbox-card-accent: rgba(45, 212, 191, 0.15);
+  --lootbox-card-shadow-hover: 0 10px 28px rgba(0, 0, 0, 0.2);
+  --lootbox-open-button-bg: var(--cta-primary-bg);
+  --lootbox-open-button-bg-hover: var(--cta-primary-bg-hover);
+  --lootbox-open-button-bg-active: var(--cta-primary-bg-active);
+  --lootbox-open-button-text: var(--cta-primary-text);
+  --lootbox-open-button-shadow: var(--cta-primary-shadow);
 
   /*
     Optional gradient button theme:
@@ -141,6 +200,8 @@
 /* Preset: Light Theme            */
 /* ------------------------------ */
 :root[data-theme="light"] {
+  color-scheme: light;
+
   /* Typography */
   --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
 
@@ -155,6 +216,7 @@
   --text-user-chip: #2a4365;
   --text-error: #b3261e;
   --text-on-button: #ffffff;
+  --button-text-shadow: none;
 
   /* Surface colors */
   --surface-card: #ffffff;
@@ -177,9 +239,67 @@
   /* Buttons */
   --button-radius: 10px;
   --button-padding: 0.6rem 1rem;
+  --accent: #2c6ad4;
   --button-bg: #2c6ad4;
   --button-bg-hover: #245fc6;
   --button-bg-active: #1e55b8;
+  --focus-ring: #2c6ad4;
+  --focus-ring-soft: rgba(44, 106, 212, 0.2);
+
+  /* Global control and overlay tokens */
+  --control-option-bg: #f6f9ff;
+  --control-option-text: #13233a;
+  --surface-border-soft: rgba(16, 43, 80, 0.16);
+  --surface-border-subtle: rgba(16, 43, 80, 0.12);
+  --surface-overlay: rgba(255, 255, 255, 0.7);
+  --selection-bg: rgba(44, 106, 212, 0.26);
+  --selection-text: #0f213a;
+  --link-hover-text: #1748a1;
+
+  /* Shared UI semantics */
+  --admin-accent: #b66b00;
+  --admin-accent-bg: rgba(182, 107, 0, 0.12);
+  --status-success-text: #0f7a3f;
+  --status-success-bg: rgba(16, 185, 129, 0.14);
+  --status-success-border: rgba(16, 185, 129, 0.24);
+  --status-danger-text: #b3261e;
+  --status-danger-bg: rgba(239, 68, 68, 0.13);
+  --status-danger-bg-hover: rgba(239, 68, 68, 0.2);
+  --status-danger-border: rgba(179, 38, 30, 0.28);
+  --status-warning-text: #9a6206;
+  --status-warning-bg: rgba(245, 158, 11, 0.2);
+  --status-warning-border: rgba(154, 98, 6, 0.26);
+
+  /* Hero/media overlays */
+  --banner-overlay-start: rgba(11, 32, 59, 0.56);
+  --banner-overlay-end: rgba(11, 32, 59, 0.1);
+  --banner-title-text: #ffffff;
+  --banner-subtitle-text: rgba(245, 250, 255, 0.94);
+  --banner-title-shadow: 0 2px 8px rgba(10, 29, 55, 0.35);
+  --banner-arrow-bg: rgba(17, 43, 74, 0.34);
+  --banner-arrow-bg-hover: rgba(17, 43, 74, 0.56);
+  --banner-dot-bg: rgba(255, 255, 255, 0.52);
+  --banner-dot-active-bg: #ffffff;
+
+  /* Shared call-to-action gradients */
+  --cta-primary-bg: linear-gradient(135deg, #2c6ad4 0%, #4b88ea 100%);
+  --cta-primary-bg-hover: linear-gradient(135deg, #245fc6 0%, #3f7de0 100%);
+  --cta-primary-bg-active: linear-gradient(135deg, #1e55b8 0%, #386fcb 100%);
+  --cta-primary-text: #ffffff;
+  --cta-primary-shadow: 0 8px 18px rgba(44, 106, 212, 0.28);
+
+  /* Component-specific extras */
+  --drop-card-hover-bg: color-mix(in oklab, var(--surface-nav-active) 82%, #ffffff);
+  --wallet-balance-border: color-mix(in oklab, #2d9adf 40%, var(--border-card));
+
+  /* Lootbox-specific theming */
+  --lootbox-card-accent: rgba(111, 151, 207, 0.18);
+  --lootbox-card-shadow-hover: 0 10px 24px rgba(19, 35, 58, 0.14);
+  --lootbox-open-button-bg: linear-gradient(135deg, #2c6ad4 0%, #4b88ea 100%);
+  --lootbox-open-button-bg-hover: linear-gradient(135deg, #245fc6 0%, #3f7de0 100%);
+  --lootbox-open-button-bg-active: linear-gradient(135deg, #1e55b8 0%, #386fcb 100%);
+  --lootbox-open-button-text: #ffffff;
+  --lootbox-open-button-shadow: 0 8px 18px rgba(44, 106, 212, 0.28);
 
   /* Special buttons */
   --button-logout-bg: #c84545;
@@ -232,6 +352,8 @@
 /* Preset: Neon Cyberpunk         */
 /* ------------------------------ */
 :root[data-theme="neon"] {
+  color-scheme: dark;
+
   /* Typography */
   --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
 
@@ -245,7 +367,8 @@
   --text-nav: #ff40d6;
   --text-user-chip: #ffb5f9;
   --text-error: #ff6b95;
-  --text-on-button: #ff009d;
+  --text-on-button: #2a1238;
+  --button-text-shadow: 0 1px 0 rgba(255, 255, 255, 0.36);
 
   /* Surface colors */
   --surface-card: #120d23;
@@ -268,9 +391,67 @@
   /* Buttons */
   --button-radius: 10px;
   --button-padding: 0.6rem 1rem;
+  --accent: #ff40d6;
   --button-bg: linear-gradient(135deg, #ff00d4 0%, #ffaff2 100%);
   --button-bg-hover: linear-gradient(135deg, #ff00d4 0%, #f057ca 100%);
   --button-bg-active: linear-gradient(135deg, #ff00d4 0%, #d746c4 100%);
+  --focus-ring: #ff7ae8;
+  --focus-ring-soft: rgba(255, 64, 214, 0.28);
+
+  /* Global control and overlay tokens */
+  --control-option-bg: #140d24;
+  --control-option-text: #ffe7fa;
+  --surface-border-soft: rgba(255, 173, 236, 0.2);
+  --surface-border-subtle: rgba(255, 173, 236, 0.14);
+  --surface-overlay: rgba(8, 5, 17, 0.5);
+  --selection-bg: rgba(255, 122, 232, 0.4);
+  --selection-text: #1a0a2b;
+  --link-hover-text: #ffb5f9;
+
+  /* Shared UI semantics */
+  --admin-accent: #ffb347;
+  --admin-accent-bg: rgba(255, 179, 71, 0.14);
+  --status-success-text: #7dffb3;
+  --status-success-bg: rgba(125, 255, 179, 0.16);
+  --status-success-border: rgba(125, 255, 179, 0.28);
+  --status-danger-text: #ff8aa8;
+  --status-danger-bg: rgba(255, 75, 122, 0.16);
+  --status-danger-bg-hover: rgba(255, 75, 122, 0.24);
+  --status-danger-border: rgba(255, 75, 122, 0.3);
+  --status-warning-text: #ffd166;
+  --status-warning-bg: rgba(255, 209, 102, 0.18);
+  --status-warning-border: rgba(255, 209, 102, 0.3);
+
+  /* Hero/media overlays */
+  --banner-overlay-start: rgba(4, 2, 10, 0.7);
+  --banner-overlay-end: rgba(6, 4, 14, 0.18);
+  --banner-title-text: #fff2fc;
+  --banner-subtitle-text: rgba(255, 205, 248, 0.9);
+  --banner-title-shadow: 0 2px 10px rgba(255, 0, 170, 0.26);
+  --banner-arrow-bg: rgba(14, 9, 28, 0.52);
+  --banner-arrow-bg-hover: rgba(22, 12, 42, 0.78);
+  --banner-dot-bg: rgba(255, 157, 243, 0.48);
+  --banner-dot-active-bg: #ffd1fa;
+
+  /* Shared call-to-action gradients */
+  --cta-primary-bg: linear-gradient(135deg, #ff3ed9 0%, #b463ff 100%);
+  --cta-primary-bg-hover: linear-gradient(135deg, #ff6ce6 0%, #c884ff 100%);
+  --cta-primary-bg-active: linear-gradient(135deg, #e127bf 0%, #9648e2 100%);
+  --cta-primary-text: #1b0d2d;
+  --cta-primary-shadow: 0 8px 18px rgba(180, 99, 255, 0.34);
+
+  /* Component-specific extras */
+  --drop-card-hover-bg: color-mix(in oklab, var(--surface-nav-active) 65%, var(--button-bg-hover));
+  --wallet-balance-border: color-mix(in oklab, #72ddff 48%, var(--border-card));
+
+  /* Lootbox-specific theming */
+  --lootbox-card-accent: rgba(255, 0, 212, 0.2);
+  --lootbox-card-shadow-hover: 0 12px 30px rgba(255, 0, 170, 0.25);
+  --lootbox-open-button-bg: var(--cta-primary-bg);
+  --lootbox-open-button-bg-hover: var(--cta-primary-bg-hover);
+  --lootbox-open-button-bg-active: var(--cta-primary-bg-active);
+  --lootbox-open-button-text: var(--cta-primary-text);
+  --lootbox-open-button-shadow: var(--cta-primary-shadow);
 
   /* Special buttons */
   --button-logout-bg: #ff4d7a;
@@ -319,71 +500,3 @@
   --rarity-contraband-border: rgba(255, 209, 102, 0.42);
 }
 
-/* ------------------------------ */
-/* Preset: Custom (Dark Clone)    */
-/* You can edit this freely        */
-/* ------------------------------ */
-:root[data-theme="custom"] {
-  /* Typography */
-  --font-family-base: "Segoe UI", system-ui, -apple-system, sans-serif;
-
-  /* App background */
-  --app-bg-color: #100a14;
-  --app-bg-gradient: radial-gradient(circle at top, #2a1536 0%, #170f22 55%, #100a14 100%);
-
-  /* Text colors */
-  --text-primary: #f7edf9;
-  --text-secondary: #c7afd3;
-  --text-nav: #dfc1e6;
-  --text-user-chip: #e6caeb;
-  --text-error: #ff9ca5;
-  --text-on-button: #ffffff;
-
-  /* Surface colors */
-  --surface-card: #1e1327;
-  --surface-login-card: #1b1224;
-  --surface-input: #170f20;
-  --surface-input-login: #150d1d;
-  --surface-nav-active: #29183a;
-  --surface-header: rgba(18, 11, 27, 0.9);
-
-  /* Borders */
-  --border-card: #4d2f61;
-  --border-card-login: #492d5c;
-  --border-input: #5c3a73;
-  --border-input-login: #5a3a6f;
-  --border-header: #503367;
-  --border-nav-hover: #8a4ca8;
-  --border-nav-active: #b85ac7;
-  --border-card-hover: #9a55bf;
-
-  /* Buttons */
-  --button-radius: 10px;
-  --button-padding: 0.6rem 1rem;
-  --button-bg: #b44ad2;
-  --button-bg-hover: #9f3fc2;
-  --button-bg-active: #8d34b0;
-
-  /* Special buttons */
-  --button-logout-bg: #d14e4e;
-
-  /* Lootbox accents */
-  --price-chip-text: #fef3c7;
-  --price-chip-border: rgba(250, 204, 21, 0.5);
-  --price-chip-bg: linear-gradient(135deg, rgba(251, 191, 36, 0.34), rgba(180, 83, 9, 0.34));
-  --favorite-accent: #facc15;
-  --favorite-accent-bg: rgba(250, 204, 21, 0.12);
-
-  --rarity-legendary-text: #fbbf24;
-  --rarity-legendary-bg: rgba(245, 158, 11, 0.28);
-  --rarity-legendary-border: rgba(245, 158, 11, 0.45);
-  --rarity-epic-text: #d8b4fe;
-  --rarity-epic-bg: rgba(192, 132, 252, 0.28);
-  --rarity-epic-border: rgba(192, 132, 252, 0.45);
-  --rarity-rare-text: #93c5fd;
-  --rarity-rare-bg: rgba(96, 165, 250, 0.28);
-  --rarity-rare-border: rgba(96, 165, 250, 0.45);
-  --rarity-common-text: #bbf7d0;
-  --rarity-common-bg: rgba(134, 239, 172, 0.24);
-  --rarity-common-border: rgba(134, 239, 172, 0.4);
-}
