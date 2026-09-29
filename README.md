@@ -105,3 +105,31 @@ npm run hard:reset:reboot
 
 - Does everything `hard:reset` does
 - Immediately launches both apps
+
+## 6) Playwright E2E setup
+
+Install Playwright test tooling from project root:
+
+```bash
+npm install -D @playwright/test
+```
+
+Install Chromium for Playwright:
+
+```bash
+npm run test:e2e:install
+```
+
+Run commands:
+
+```bash
+npm run test:e2e
+npm run test:e2e:ui
+npm run test:e2e:headed
+npm run test:e2e:smoke
+```
+
+Notes:
+- Keep specs in `Automation/`.
+- Start backend/frontend manually before running Playwright.
+- Recommended VS Code extension: `Playwright Test for VSCode` by Microsoft.

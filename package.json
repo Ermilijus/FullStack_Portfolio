@@ -19,10 +19,15 @@
     "clean:db": "powershell -NoProfile -Command \"if (Test-Path 'backend\\prisma\\dev.db') { Remove-Item -Force 'backend\\prisma\\dev.db' }; if (Test-Path 'backend\\prisma\\dev.db-journal') { Remove-Item -Force 'backend\\prisma\\dev.db-journal' }; exit 0\"",
     "clean:dist": "powershell -NoProfile -Command \"if (Test-Path 'backend\\dist') { Remove-Item -Force -Recurse 'backend\\dist' }; if (Test-Path 'frontend\\dist') { Remove-Item -Force -Recurse 'frontend\\dist' }; exit 0\"",
     "hard:reset": "npm run clean:db && npm run db:reset && npm run build",
-    "hard:reset:reboot": "npm run hard:reset && npm run launch"
+    "hard:reset:reboot": "npm run hard:reset && npm run launch",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:smoke": "playwright test Automation/smoke.placeholder.spec.ts",
+    "test:e2e:install": "playwright install chromium"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "concurrently": "^9.1.2"
-  },
-  "dependencies": {}
+  }
 }
