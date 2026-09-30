@@ -104,10 +104,10 @@ test("Login negative - invalid email format uses native validation", async ({ pa
 
 // ------------------------------------------
 
-test("Login negative - invalid credentials", async ({ page }) => {
+test("Login negative - Wrong email", async ({ page }) => {
     await page.goto("/login");
     await expect(page.locator(".login-container")).toBeVisible();
-    await fillLoginForm(page, "invalid@example.com", "invalid123");
+    await fillLoginForm(page, "invalid@example.com", "pass123");
     await expectLoginError(await submitLoginAndGetResponse(page), 401, "Invalid email or password");
     await expect(page).toHaveURL("/login");
 });
@@ -124,3 +124,10 @@ test("Login negative - wrong password", async ({ page }) => {
 
 // ------------------------------------------
 
+test("Login negative - wrong email and password", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.locator(".login-container")).toBeVisible();
+    await fillLoginForm(page, "invalid@example.com", "wrongpassword");
+    await expectLoginError(await submitLoginAndGetResponse(page), 401, "Invalid email or password");
+    await expect(page).toHaveURL("/login");
+});
