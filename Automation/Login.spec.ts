@@ -131,3 +131,13 @@ test("Login negative - wrong email and password", async ({ page }) => {
     await expectLoginError(await submitLoginAndGetResponse(page), 401, "Invalid email or password");
     await expect(page).toHaveURL("/login");
 });
+
+test("Login - Logout test", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.locator(".login-container")).toBeVisible();
+    await fillLoginForm(page, "user1@example.com", "pass123");
+    await page.getByRole("button", { name: "Login" }).click();
+    await expect(page).toHaveURL("/home");
+    await page.getByRole("button", { name: "Logout" }).click();
+    await expect(page).toHaveURL("/login");
+});

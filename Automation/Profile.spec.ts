@@ -24,7 +24,7 @@ test ("Extensive user page contents check", async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Open Inventory' })).toBeVisible();
     await expect(page.getByText('Currency$')).toBeVisible();
 
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
     await expect(page.getByText('Reputation')).toBeVisible();
     await expect(page.getByText('Posts', { exact: true })).toBeVisible();
     await expect(page.getByText('Replies', { exact: true })).toBeVisible();
@@ -42,8 +42,8 @@ test ("Extensive user page contents check", async ({ page }) => {
 // ------------------------------------------
 
 test ("Change Avatar - modal opens and present", async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
 
     await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
@@ -55,8 +55,8 @@ test ("Change Avatar - modal opens and present", async ({ page }) => {
 
 test ("change avatar modal - upload png", async ({ page }) => {
     const avatar = page.getByRole("img", { name: "User avatar" });
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
 
     await page.locator('input[type="file"]').setInputFiles(fixtures.png);
@@ -73,8 +73,8 @@ test ("change avatar modal - upload png", async ({ page }) => {
 
 test ("change avatar modal - upload gif", async ({ page }) => {
     const avatar = page.getByRole("img", { name: "User avatar" });
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
 
     await page.locator('input[type="file"]').setInputFiles(fixtures.gif);
@@ -89,8 +89,8 @@ test ("change avatar modal - upload gif", async ({ page }) => {
 });
 
 test("change avatar modal - rejects images larger than 5 MB", async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
 
     const fileInput = page.locator('input[type="file"]');
@@ -107,8 +107,8 @@ test("change avatar modal - rejects images larger than 5 MB", async ({ page }) =
 });
 
 test("change avatar modal - rejects non-image files", async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
     
     const fileInput = page.locator('input[type="file"]');
@@ -126,14 +126,14 @@ test("change avatar modal - rejects non-image files", async ({ page }) => {
 });
 
 test("Change avatar modal - closes with close button & esc key", async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Close' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).not.toBeVisible();
 
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
 
     await page.keyboard.press("Escape");
@@ -143,8 +143,9 @@ test("Change avatar modal - closes with close button & esc key", async ({ page }
 
 test("Change avatar modal - Avatar changes using url", async ({ page }) => {
     const avatar = page.getByRole("img", { name: "User avatar" });
-    await expect(page.getByRole('button', { name: 'Your avatar Change avatar' })).toBeVisible();
-    await page.getByRole('button', { name: 'Your avatar Change avatar' }).click();
+
+    await expect(page.getByRole('button', { name: 'Change avatar' })).toBeVisible();
+    await page.getByRole('button', { name: 'Change avatar' }).click();
     await expect(page.getByRole('heading', { name: 'Change Avatar' })).toBeVisible();
 
     const imageUrl = "https://i.imgur.com/3JjVyds.jpeg";
@@ -156,3 +157,57 @@ test("Change avatar modal - Avatar changes using url", async ({ page }) => {
 
 });
 //------------------------------------------
+
+test("Account management modal - opens and present", async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Account Management' })).toBeVisible();
+    await page.getByRole('button', { name: 'Account Management' }).click();
+    await expect(page.getByRole('heading', { name: 'Account Management' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
+
+    await expect(page.getByRole('heading', { name: 'Username' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update Username' })).toBeVisible();
+
+    await expect(page.getByRole('heading', { name: 'Email' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update Email' })).toBeVisible();
+
+    await expect(page.getByRole('heading', { name: 'Password' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Update Password' })).toBeVisible();
+
+});
+
+test("Account management modal - Username change", async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Account Management' })).toBeVisible();
+    await page.getByRole('button', { name: 'Account Management' }).click();
+    await expect(page.getByRole('heading', { name: 'Account Management' })).toBeVisible();
+
+    const profileUsername = page.locator(".profile-identity-main h3");
+    const headerUsername = page.locator(".user-chip > span");
+    const originalUsername = await profileUsername.innerText();
+
+    await page.getByRole('textbox', { name: 'Username' }).fill("NewUsername");
+    await page.getByRole('button', { name: 'Update Username' }).click();
+
+    await expect(page.getByRole('textbox', { name: 'Username' })).toHaveValue("NewUsername");
+    await page.getByRole('button', { name: 'Close' }).click();
+
+
+    await expect(profileUsername).toHaveText("NewUsername");
+    await expect(headerUsername).toHaveText("NewUsername");
+
+    await page.reload();
+
+    await expect(profileUsername).toHaveText("NewUsername");
+    await expect(headerUsername).toHaveText("NewUsername");
+
+
+    await page.getByRole('button', { name: 'Account Management' }).click();
+    await expect(page.getByRole('heading', { name: 'Account Management' })).toBeVisible();
+
+    await page.getByRole('textbox', { name: 'Username' }).fill(originalUsername);
+    await page.getByRole('button', { name: 'Update Username' }).click();
+    await expect(profileUsername).toHaveText(originalUsername);
+    await expect(headerUsername).toHaveText(originalUsername);
+
+    await page.getByRole('button', { name: 'Close' }).click();
+
+});
